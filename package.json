@@ -1,0 +1,39 @@
+{
+  "name": "regressionbot",
+  "version": "0.0.1",
+  "description": "The official SDK for regressionbot.com - the simplest way to automate visual regression testing.",
+  "homepage": "https://regressionbot.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cbestall/vr-api.git",
+    "directory": "sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/cbestall/vr-api/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "regressionbot": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "visual-regression",
+    "testing",
+    "sdk",
+    "cli"
+  ],
+  "author": "RegressionBot (https://regressionbot.com)",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

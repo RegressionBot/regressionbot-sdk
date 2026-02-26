@@ -1,0 +1,253 @@
+#!/usr/bin/env node
+import { Visual } from './index';
+import { JobStatus } from './types';
+
+function parseArgs(args: string[]) {
+    const options: any = { _: [] };
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg.startsWith('--')) {
+            const key = arg.slice(2);
+            const value = args[i + 1];
+            if (value && !value.startsWith('--')) {
+                options[key] = value;
+                i++;
+            } else {
+                options[key] = true;
+            }
+        } else {
+            options._.push(arg);
+        }
+    }
+    return options;
+}
+
+const argv = parseArgs(process.argv.slice(2));
+const command = argv._[0];
+const param = argv._[1];
+
+const sdk = new Visual();
+
+async function main() {
+    if (!command || command === 'help' || command === '--help' || command === '-h') {
+        showHelp();
+        return;
+    }
+
+    try {
+        if (command === 'status') {
+            if (!param) throw new Error('Job ID is required for status command.');
+            await checkStatus(param);
+        } else if (command === 'summary') {
+            if (!param) throw new Error('Job ID is required for summary command.');
+            await showSummary(param, argv);
+        } else if (command === 'approve') {
+            if (!param) throw new Error('Job ID is required for approve command.');
+            await approveJob(param);
+        } else if (command.startsWith('http')) {
+            // Implicit test command
+            await startJob(command, argv);
+        } else {
+            console.error(`Unknown command: ${command}`);
+            showHelp();
+            process.exit(1);
+        }
+    } catch (error: any) {
+        console.error(`
+Error: ${error.message}`);
+        process.exit(1);
+    }
+}
+
+function showHelp() {
+    console.log(`
+RegressionBot CLI
+
+Usage:
+  npx regressionbot <url>           Quick test a URL.
+  npx regressionbot status <jobId>  Check the status of a specific job.
+  npx regressionbot summary <jobId> Get detailed results and diff URLs.
+                                     Use --download to save images locally.
+  npx regressionbot approve <jobId> Approve a job's results as new baselines.
+
+Options for <url>:
+  --project <id>       Required project ID.
+  --against <url>      Base origin to compare against.
+  --sitemap <url>      Explicit sitemap.xml location.
+  --on <devices>       Comma-separated device names (e.g. "Desktop Chrome,iPhone 12").
+  --scan <pattern>     Glob pattern to scan in sitemap (e.g. "/blog/**").
+  --exclude <patterns> Comma-separated glob patterns to exclude.
+  --concurrency <n>    Max concurrent workers (default 10).
+  --auto-approve       Automatically approve results as new baselines.
+  --mask <selectors>   Comma-separated CSS selectors to hide (e.g. ".ad,#popup").
+
+Environment Variables:
+  REGRESSIONBOT_API_KEY   Override the API Key.
+  REGRESSIONBOT_API_URL   Override the API URL.
+`);
+}
+
+async function startJob(url: string, options: any) {
+    console.log(`🚀 Initializing visual test...`);
+    
+    const projectId = options.project || new URL(url).hostname;
+    const devices = options.on ? options.on.split(',').map((s: string) => s.trim()) : ['Desktop Chrome'];
+    
+    const builder = sdk.test(url)
+        .forProject(projectId)
+        .on(devices)
+        .concurrency(Number(options.concurrency) || 10);
+
+    if (options.against) {
+        builder.against(options.against);
+    }
+
+    if (options.sitemap) {
+        builder.sitemap(options.sitemap);
+    }
+
+    if (options.scan) {
+        const exclude = options.exclude ? options.exclude.split(',').map((s: string) => s.trim()) : [];
+        builder.scan(options.scan, { exclude });
+    }
+
+    if (options['auto-approve']) {
+        builder.autoApprove(true);
+    }
+
+    if (options.mask) {
+        const selectors = options.mask.split(',').map((s: string) => s.trim());
+        builder.mask(selectors);
+    }
+
+    const job = await builder.run();
+
+    console.log(`✅ Job started! ID: ${job.jobId}`);
+    console.log(`📊 Project: ${projectId}`);
+    console.log(`📱 Matrix: ${devices.join(', ')}`);
+    if (options.scan) {
+        console.log(`🔍 Scan: ${options.scan} (Exclude: ${options.exclude || 'none'})`);
+    }
+    console.log(`
+Waiting for completion...
+`);
+
+    const result = await job.waitForCompletion(2000, (status: JobStatus) => {
+        const progress = status.progress || { percent: '0' };
+        process.stdout.write(`\r   Status: ${status.status} (${progress.percent}%)`);
+    });
+
+    console.log('\n\n✅ Job Completed.');
+    
+    const summary = await job.getSummary();
+    console.log(`Overall Stability Score: ${summary.overallScore}/100`);
+    console.log(`Total Tasks: ${summary.totalUrls}`);
+    console.log(`Regressions: ${summary.regressionCount}`);
+    console.log(`New Baselines: ${summary.newBaselineCount}`);
+    console.log(`Errors: ${summary.errorCount}`);
+
+    if (summary.newBaselineCount > 0) {
+        console.log('\n✨ New Baselines Created:');
+        summary.newBaselines.forEach((nb: any) => {
+            console.log(`- ${nb.url} [${nb.variantName}]`);
+        });
+    }
+
+    if (summary.regressionCount > 0) {
+        console.log('\n❌ Regressions found:');
+        summary.regressions.forEach((r: any) => {
+            console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
+            console.log(`  Diff: ${r.diffUrl}`);
+        });
+        console.log(`\nTo approve these changes, run:\n  npx regressionbot approve ${job.jobId}`);
+        process.exit(1); 
+    } else if (summary.errorCount > 0) {
+        console.log('\n⚠️ Errors encountered:');
+        summary.errors.forEach((e: any) => {
+            console.log(`- ${e.url}: ${e.errorMessage}`);
+        });
+        process.exit(1);
+    } else {
+        console.log('\n✨ No regressions found. All good!');
+    }
+}
+
+async function checkStatus(jobId: string) {
+    const job = sdk.job(jobId);
+    const status = await job.getStatus();
+    console.log(JSON.stringify(status, null, 2));
+}
+
+async function showSummary(jobId: string, options: any = {}) {
+    const job = sdk.job(jobId);
+    const summary = await job.getSummary();
+    console.log(`
+Job Summary: ${jobId}
+Status: ${summary.status}
+Overall Score: ${summary.overallScore}/100
+Execution Time: ${summary.executionTime}s
+Total Tasks: ${summary.totalUrls}
+Regressions: ${summary.regressionCount}
+Matches: ${summary.matchCount}
+Errors: ${summary.errorCount}
+`);
+
+    if (summary.collageUrl) {
+        console.log(`Collage: ${summary.collageUrl}`);
+        if (options.download) {
+            const fs = require('fs');
+            const path = require('path');
+            const dir = path.join(process.cwd(), 'regressions', jobId);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            
+            const res = await fetch(summary.collageUrl);
+            const buffer = Buffer.from(await res.arrayBuffer());
+            const filePath = path.join(dir, 'collage.jpg');
+            fs.writeFileSync(filePath, buffer);
+            console.log(`💾 Downloaded collage to: ${filePath}\n`);
+        }
+    }
+
+    if (summary.regressionCount > 0) {
+        console.log('❌ Regressions found:');
+        for (const r of summary.regressions) {
+            console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
+            console.log(`  Diff: ${r.diffUrl}`);
+            
+            if (options.download) {
+                const fs = require('fs');
+                const path = require('path');
+                const dir = path.join(process.cwd(), 'regressions', jobId, r.variantName);
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+                const download = async (url: string, name: string) => {
+                    const res = await fetch(url);
+                    const buffer = Buffer.from(await res.arrayBuffer());
+                    const filePath = path.join(dir, name);
+                    fs.writeFileSync(filePath, buffer);
+                    console.log(`  💾 Downloaded: ${name}`);
+                };
+
+                await download(r.baselineUrl, 'baseline.png');
+                await download(r.currentUrl, 'current.png');
+                await download(r.diffUrl, 'diff.png');
+            }
+        }
+    }
+
+    if (summary.errorCount > 0) {
+        console.log('\n⚠️ Errors encountered:');
+        summary.errors.forEach((e: any) => {
+            console.log(`- ${e.url}: ${e.errorMessage}`);
+        });
+    }
+}
+
+async function approveJob(jobId: string) {
+    console.log(`Approving baselines for job: ${jobId}...`);
+    const job = sdk.job(jobId);
+    const res = await job.approve();
+    console.log(`Success! ${res.message}`);
+}
+
+main();
