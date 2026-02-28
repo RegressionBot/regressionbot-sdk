@@ -178,6 +178,12 @@ async function checkStatus(jobId: string) {
     console.log(JSON.stringify(status, null, 2));
 }
 
+function sanitizeFilename(name: string): string {
+    if (!name) return 'unknown';
+    // Allow alphanumeric, underscore, hyphen, space.
+    return name.replace(/[^a-zA-Z0-9_\- ]/g, '_');
+}
+
 async function showSummary(jobId: string, options: any = {}) {
     const job = sdk.job(jobId);
     const summary = await job.getSummary();
@@ -197,7 +203,8 @@ Errors: ${summary.errorCount}
         if (options.download) {
             const fs = require('fs');
             const path = require('path');
-            const dir = path.join(process.cwd(), 'regressions', jobId);
+            const safeJobId = sanitizeFilename(jobId);
+            const dir = path.join(process.cwd(), 'regressions', safeJobId);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
             
             const res = await fetch(summary.collageUrl);
@@ -217,7 +224,9 @@ Errors: ${summary.errorCount}
             if (options.download) {
                 const fs = require('fs');
                 const path = require('path');
-                const dir = path.join(process.cwd(), 'regressions', jobId, r.variantName);
+                const safeJobId = sanitizeFilename(jobId);
+                const safeVariantName = sanitizeFilename(r.variantName);
+                const dir = path.join(process.cwd(), 'regressions', safeJobId, safeVariantName);
                 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
                 const download = async (url: string, name: string) => {
