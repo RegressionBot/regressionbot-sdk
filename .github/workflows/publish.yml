@@ -10,19 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # Required for OIDC/Trusted Publishing
+      id-token: write # CRITICAL for Trusted Publishing
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          # We do NOT set registry-url here as it forces npm to look for a NODE_AUTH_TOKEN
+          node-version: '22' # Node 22+ is required for native Trusted Publishing support
+      
+      - name: Upgrade npm
+        run: npm install -g npm@latest # Ensures npm v11.5.1+ which handles OIDC automatically
       
       - run: npm install
       - run: npm run build
 
       - name: Publish to npm
-        # Using OIDC for publish. This requires no NODE_AUTH_TOKEN in the environment.
+        # No NODE_AUTH_TOKEN needed. npm v11+ detects the OIDC environment automatically.
+        # We check if the version exists first to avoid failing on duplicate pushes.
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           CURRENT_VERSION=$(node -p "require('./package.json').version")
