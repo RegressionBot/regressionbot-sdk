@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # Required for Trusted Publishing
+      id-token: write # Required for OIDC/Trusted Publishing
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,7 +22,7 @@ jobs:
       - run: npm run build
 
       - name: Publish to npm
-        # We use a simple script to skip publishing if the version already exists
+        # Using OIDC for publish. This requires no NODE_AUTH_TOKEN in the environment.
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -31,4 +31,3 @@ jobs:
           else
             npm publish --provenance --access public
           fi
-
