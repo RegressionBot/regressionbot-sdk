@@ -31,5 +31,4 @@ jobs:
           else
             npm publish --provenance --access public
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # Optional if Trusted Publishing is set up, but good for fallback
+
