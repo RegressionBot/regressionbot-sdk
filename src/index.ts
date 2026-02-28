@@ -172,11 +172,11 @@ export class JobHandle {
     }
 
     public async getStatus(): Promise<JobStatus> {
-        return this.sdk._request<JobStatus>(`/job/${this.jobId}`);
+        return this.sdk._request<JobStatus>(`/job/${encodeURIComponent(this.jobId)}`);
     }
 
     public async getSummary(): Promise<JobSummary> {
-        return this.sdk._request<JobSummary>(`/job/${this.jobId}/summary`);
+        return this.sdk._request<JobSummary>(`/job/${encodeURIComponent(this.jobId)}/summary`);
     }
 
     public async approve(): Promise<{ message: string }> {
