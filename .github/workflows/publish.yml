@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          registry-url: 'https://registry.npmjs.org'
+          # We do NOT set registry-url here as it forces npm to look for a NODE_AUTH_TOKEN
       
       - run: npm install
       - run: npm run build
