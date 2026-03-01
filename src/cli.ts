@@ -67,7 +67,8 @@ Usage:
   npx regressionbot <url>           Quick test a URL.
   npx regressionbot status <jobId>  Check the status of a specific job.
   npx regressionbot summary <jobId> Get detailed results and diff URLs.
-                                     Use --download to save images locally.
+                                     Use --download to save the diff image locally.
+                                     Use --download-full to save baseline and current images too.
   npx regressionbot approve <jobId> Approve a job's results as new baselines.
 
 Options for <url>:
@@ -221,12 +222,14 @@ Errors: ${summary.errorCount}
             console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
             
-            if (options.download) {
+            const doDownload = options.download || options['download-full'];
+            if (doDownload) {
                 const fs = require('fs');
                 const path = require('path');
                 const safeJobId = sanitizeFilename(jobId);
                 const safeVariantName = sanitizeFilename(r.variantName);
-                const dir = path.join(process.cwd(), 'regressions', safeJobId, safeVariantName);
+                const safeUrl = sanitizeFilename(r.url);
+                const dir = path.join(process.cwd(), 'regressions', safeJobId, safeUrl, safeVariantName);
                 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
                 const download = async (url: string, name: string) => {
@@ -237,10 +240,37 @@ Errors: ${summary.errorCount}
                     console.log(`  💾 Downloaded: ${name}`);
                 };
 
-                await download(r.baselineUrl, 'baseline.png');
-                await download(r.currentUrl, 'current.png');
                 await download(r.diffUrl, 'diff.png');
+                
+                if (options['download-full']) {
+                    await download(r.baselineUrl, 'baseline.png');
+                    await download(r.currentUrl, 'current.png');
+                }
             }
+        }
+    }
+
+    if (summary.matchCount > 0 && options['download-full']) {
+        console.log('\n✅ Matches (Downloading...):');
+        for (const m of summary.matches) {
+            const fs = require('fs');
+            const path = require('path');
+            const safeJobId = sanitizeFilename(jobId);
+            const safeVariantName = sanitizeFilename(m.variantName);
+            const safeUrl = sanitizeFilename(m.url);
+            const dir = path.join(process.cwd(), 'regressions', safeJobId, safeUrl, safeVariantName);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+            const download = async (url: string, name: string) => {
+                const res = await fetch(url);
+                const buffer = Buffer.from(await res.arrayBuffer());
+                const filePath = path.join(dir, name);
+                fs.writeFileSync(filePath, buffer);
+                console.log(`  💾 Downloaded: ${m.url} [${m.variantName}] -> ${name}`);
+            };
+
+            await download(m.baselineUrl, 'baseline.png');
+            await download(m.currentUrl, 'current.png');
         }
     }
 
