@@ -135,8 +135,8 @@ export class JobBuilder {
      * Compiles the manifest and triggers the API.
      */
     public async run(): Promise<JobHandle> {
-        if (!this.manifest.projectId) {
-            throw new Error('Project ID is required. Use .forProject("id")');
+        if (!this.manifest.projectId && !this.manifest.baseOrigin) {
+            throw new Error('Project ID is required. Use .forProject("id") or provide an origin to compare against using .against()');
         }
 
         // If no checks/scans provided, default to root
@@ -164,8 +164,24 @@ export class JobBuilder {
 
 export function sanitizeFilename(name: string): string {
     if (!name) return 'unknown';
-    // Allow alphanumeric, underscore, hyphen, space.
-    return name.replace(/[^a-zA-Z0-9_\- ]/g, '_');
+    // Allow alphanumeric and underscore. Replace everything else (including hyphens and spaces) with underscore.
+    return name.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+/**
+ * Converts a URL into a clean, flat string representing its path.
+ * e.g. https://example.com/ai/jules-agent -> ai_jules_agent
+ */
+export function sanitizeUrlToPath(urlStr: string): string {
+    try {
+        const url = new URL(urlStr);
+        let path = url.pathname;
+        if (path === '/') return 'root';
+        // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
+        return path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
+    } catch (e) {
+        return sanitizeFilename(urlStr);
+    }
 }
 
 export class JobHandle {
@@ -202,43 +218,42 @@ export class JobHandle {
         const path = require('path');
         const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
         const safeJobId = sanitizeFilename(this.jobId);
+        const jobDir = path.join(baseDir, safeJobId);
 
-        const download = async (url: string, destDir: string, name: string) => {
-            if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+        if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
+
+        const download = async (url: string, name: string) => {
             const res = await fetch(url);
             const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(destDir, name);
+            const filePath = path.join(jobDir, name);
             fs.writeFileSync(filePath, buffer);
         };
 
         // Collage
         if (summary.collageUrl) {
-            const collageDir = path.join(baseDir, safeJobId);
-            await download(summary.collageUrl, collageDir, 'collage.jpg');
+            await download(summary.collageUrl, 'collage.jpg');
         }
 
         // Regressions
         for (const r of summary.regressions) {
-            const safeUrl = sanitizeFilename(r.url);
+            const nameBase = sanitizeUrlToPath(r.url);
             const safeVariant = sanitizeFilename(r.variantName);
-            const destDir = path.join(baseDir, safeJobId, safeUrl, safeVariant);
             
-            await download(r.diffUrl, destDir, 'diff.png');
+            await download(r.diffUrl, `${nameBase}_diff_${safeVariant}.png`);
             if (options.full) {
-                await download(r.baselineUrl, destDir, 'baseline.png');
-                await download(r.currentUrl, destDir, 'current.png');
+                await download(r.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
+                await download(r.currentUrl, `${nameBase}_current_${safeVariant}.png`);
             }
         }
 
         // Matches (Full only)
         if (options.full && summary.matches) {
             for (const m of summary.matches) {
-                const safeUrl = sanitizeFilename(m.url);
+                const nameBase = sanitizeUrlToPath(m.url);
                 const safeVariant = sanitizeFilename(m.variantName);
-                const destDir = path.join(baseDir, safeJobId, safeUrl, safeVariant);
                 
-                await download(m.baselineUrl, destDir, 'baseline.png');
-                await download(m.currentUrl, destDir, 'current.png');
+                await download(m.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
+                await download(m.currentUrl, `${nameBase}_current_${safeVariant}.png`);
             }
         }
     }

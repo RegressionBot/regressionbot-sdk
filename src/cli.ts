@@ -101,13 +101,16 @@ Environment Variables:
 async function startJob(url: string, options: any) {
     console.log(`🚀 Initializing visual test...`);
     
-    const projectId = options.project || new URL(url).hostname;
+    const projectId = options.project;
     const devices = options.on ? options.on.split(',').map((s: string) => s.trim()) : ['Desktop Chrome'];
     
     const builder = sdk.test(url)
-        .forProject(projectId)
         .on(devices)
         .concurrency(Number(options.concurrency) || 10);
+
+    if (projectId) {
+        builder.forProject(projectId);
+    }
 
     if (options.against) {
         builder.against(options.against);
