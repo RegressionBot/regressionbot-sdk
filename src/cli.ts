@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { Visual } from './index';
+import { Visual, sanitizeFilename } from './index';
 import { JobStatus } from './types';
+import * as path from 'path';
 
 function parseArgs(args: string[]) {
     const options: any = { _: [] };
@@ -179,12 +180,6 @@ async function checkStatus(jobId: string) {
     console.log(JSON.stringify(status, null, 2));
 }
 
-function sanitizeFilename(name: string): string {
-    if (!name) return 'unknown';
-    // Allow alphanumeric, underscore, hyphen, space.
-    return name.replace(/[^a-zA-Z0-9_\- ]/g, '_');
-}
-
 async function showSummary(jobId: string, options: any = {}) {
     const job = sdk.job(jobId);
     const summary = await job.getSummary();
@@ -201,19 +196,6 @@ Errors: ${summary.errorCount}
 
     if (summary.collageUrl) {
         console.log(`Collage: ${summary.collageUrl}`);
-        if (options.download) {
-            const fs = require('fs');
-            const path = require('path');
-            const safeJobId = sanitizeFilename(jobId);
-            const dir = path.join(process.cwd(), 'regressions', safeJobId);
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-            
-            const res = await fetch(summary.collageUrl);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(dir, 'collage.jpg');
-            fs.writeFileSync(filePath, buffer);
-            console.log(`💾 Downloaded collage to: ${filePath}\n`);
-        }
     }
 
     if (summary.regressionCount > 0) {
@@ -221,57 +203,16 @@ Errors: ${summary.errorCount}
         for (const r of summary.regressions) {
             console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
-            
-            const doDownload = options.download || options['download-full'];
-            if (doDownload) {
-                const fs = require('fs');
-                const path = require('path');
-                const safeJobId = sanitizeFilename(jobId);
-                const safeVariantName = sanitizeFilename(r.variantName);
-                const safeUrl = sanitizeFilename(r.url);
-                const dir = path.join(process.cwd(), 'regressions', safeJobId, safeUrl, safeVariantName);
-                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-                const download = async (url: string, name: string) => {
-                    const res = await fetch(url);
-                    const buffer = Buffer.from(await res.arrayBuffer());
-                    const filePath = path.join(dir, name);
-                    fs.writeFileSync(filePath, buffer);
-                    console.log(`  💾 Downloaded: ${name}`);
-                };
-
-                await download(r.diffUrl, 'diff.png');
-                
-                if (options['download-full']) {
-                    await download(r.baselineUrl, 'baseline.png');
-                    await download(r.currentUrl, 'current.png');
-                }
-            }
         }
     }
 
-    if (summary.matchCount > 0 && options['download-full']) {
-        console.log('\n✅ Matches (Downloading...):');
-        for (const m of summary.matches) {
-            const fs = require('fs');
-            const path = require('path');
-            const safeJobId = sanitizeFilename(jobId);
-            const safeVariantName = sanitizeFilename(m.variantName);
-            const safeUrl = sanitizeFilename(m.url);
-            const dir = path.join(process.cwd(), 'regressions', safeJobId, safeUrl, safeVariantName);
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-            const download = async (url: string, name: string) => {
-                const res = await fetch(url);
-                const buffer = Buffer.from(await res.arrayBuffer());
-                const filePath = path.join(dir, name);
-                fs.writeFileSync(filePath, buffer);
-                console.log(`  💾 Downloaded: ${m.url} [${m.variantName}] -> ${name}`);
-            };
-
-            await download(m.baselineUrl, 'baseline.png');
-            await download(m.currentUrl, 'current.png');
-        }
+    const doDownload = options.download || options['download-full'];
+    if (doDownload) {
+        console.log(`\n💾 Downloading results...`);
+        await job.downloadResults({
+            full: options['download-full']
+        });
+        console.log(`✅ Download complete. Saved to: ${path.join(process.cwd(), 'regressions', sanitizeFilename(jobId))}`);
     }
 
     if (summary.errorCount > 0) {
