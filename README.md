@@ -98,21 +98,49 @@ Test an entire site using glob patterns.
 npx regressionbot https://example.com --scan "/**" --exclude "/admin/**" --concurrency 20
 ```
 
-#### 3. Job Summary
+### Job Summary
 Get detailed results and diff URLs for a completed job.
 ```bash
 npx regressionbot summary <jobId>
 ```
 
-Add the `--download` flag to save regression images locally:
+Add the `--download` flag to save the diff images locally:
 ```bash
 npx regressionbot summary <jobId> --download
+```
+
+Use the `--download-full` flag to save baseline, current, and diff images:
+```bash
+npx regressionbot summary <jobId> --download-full
 ```
 
 #### 4. Approve Changes
 Promote the current screenshots of a job to be the new baselines.
 ```bash
 npx regressionbot approve <jobId>
+```
+
+## SDK Usage (Fluent API)
+
+### Basic Example
+```typescript
+import { Visual } from 'regressionbot';
+
+const visual = new Visual();
+
+const job = await visual
+  .test('https://preview.myapp.com')
+  .forProject('my-app-web')
+  .run();
+
+const status = await job.waitForCompletion();
+console.log(`Stability Score: ${status.overallScore}/100`);
+
+// Download only diff images
+await job.downloadResults();
+
+// Download all images (baseline, current, diff)
+await job.downloadResults({ full: true });
 ```
 
 ## Development
