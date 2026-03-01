@@ -1,13 +1,23 @@
 #!/usr/bin/env node
-import { Visual } from './index';
+import { Visual, sanitizeFilename } from './index';
 import { JobStatus } from './types';
+import * as path from 'path';
 
 function parseArgs(args: string[]) {
-    const options: any = { _: [] };
+    const options: any = Object.create(null);
+    options._ = [];
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         if (arg.startsWith('--')) {
             const key = arg.slice(2);
+
+            // Prevent prototype pollution
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+                const value = args[i + 1];
+                if (value && !value.startsWith('--')) i++;
+                continue;
+            }
+
             const value = args[i + 1];
             if (value && !value.startsWith('--')) {
                 options[key] = value;
@@ -67,7 +77,8 @@ Usage:
   npx regressionbot <url>           Quick test a URL.
   npx regressionbot status <jobId>  Check the status of a specific job.
   npx regressionbot summary <jobId> Get detailed results and diff URLs.
-                                     Use --download to save images locally.
+                                     Use --download to save the diff image locally.
+                                     Use --download-full to save baseline and current images too.
   npx regressionbot approve <jobId> Approve a job's results as new baselines.
 
 Options for <url>:
@@ -178,12 +189,6 @@ async function checkStatus(jobId: string) {
     console.log(JSON.stringify(status, null, 2));
 }
 
-function sanitizeFilename(name: string): string {
-    if (!name) return 'unknown';
-    // Allow alphanumeric, underscore, hyphen, space.
-    return name.replace(/[^a-zA-Z0-9_\- ]/g, '_');
-}
-
 async function showSummary(jobId: string, options: any = {}) {
     const job = sdk.job(jobId);
     const summary = await job.getSummary();
@@ -200,19 +205,6 @@ Errors: ${summary.errorCount}
 
     if (summary.collageUrl) {
         console.log(`Collage: ${summary.collageUrl}`);
-        if (options.download) {
-            const fs = require('fs');
-            const path = require('path');
-            const safeJobId = sanitizeFilename(jobId);
-            const dir = path.join(process.cwd(), 'regressions', safeJobId);
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-            
-            const res = await fetch(summary.collageUrl);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(dir, 'collage.jpg');
-            fs.writeFileSync(filePath, buffer);
-            console.log(`💾 Downloaded collage to: ${filePath}\n`);
-        }
     }
 
     if (summary.regressionCount > 0) {
@@ -220,28 +212,16 @@ Errors: ${summary.errorCount}
         for (const r of summary.regressions) {
             console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
-            
-            if (options.download) {
-                const fs = require('fs');
-                const path = require('path');
-                const safeJobId = sanitizeFilename(jobId);
-                const safeVariantName = sanitizeFilename(r.variantName);
-                const dir = path.join(process.cwd(), 'regressions', safeJobId, safeVariantName);
-                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-                const download = async (url: string, name: string) => {
-                    const res = await fetch(url);
-                    const buffer = Buffer.from(await res.arrayBuffer());
-                    const filePath = path.join(dir, name);
-                    fs.writeFileSync(filePath, buffer);
-                    console.log(`  💾 Downloaded: ${name}`);
-                };
-
-                await download(r.baselineUrl, 'baseline.png');
-                await download(r.currentUrl, 'current.png');
-                await download(r.diffUrl, 'diff.png');
-            }
         }
+    }
+
+    const doDownload = options.download || options['download-full'];
+    if (doDownload) {
+        console.log(`\n💾 Downloading results...`);
+        await job.downloadResults({
+            full: options['download-full']
+        });
+        console.log(`✅ Download complete. Saved to: ${path.join(process.cwd(), 'regressions', sanitizeFilename(jobId))}`);
     }
 
     if (summary.errorCount > 0) {

@@ -162,6 +162,12 @@ export class JobBuilder {
     }
 }
 
+export function sanitizeFilename(name: string): string {
+    if (!name) return 'unknown';
+    // Allow alphanumeric, underscore, hyphen, space.
+    return name.replace(/[^a-zA-Z0-9_\- ]/g, '_');
+}
+
 export class JobHandle {
     private sdk: Visual;
     public jobId: string;
@@ -181,6 +187,60 @@ export class JobHandle {
 
     public async approve(): Promise<{ message: string }> {
         return this.sdk._request('/approve', 'POST', { jobId: this.jobId });
+    }
+
+    /**
+     * Download images for the job locally.
+     * @param options Download options.
+     */
+    public async downloadResults(options: { 
+        full?: boolean, 
+        baseDir?: string 
+    } = {}): Promise<void> {
+        const summary = await this.getSummary();
+        const fs = require('fs');
+        const path = require('path');
+        const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
+        const safeJobId = sanitizeFilename(this.jobId);
+
+        const download = async (url: string, destDir: string, name: string) => {
+            if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+            const res = await fetch(url);
+            const buffer = Buffer.from(await res.arrayBuffer());
+            const filePath = path.join(destDir, name);
+            fs.writeFileSync(filePath, buffer);
+        };
+
+        // Collage
+        if (summary.collageUrl) {
+            const collageDir = path.join(baseDir, safeJobId);
+            await download(summary.collageUrl, collageDir, 'collage.jpg');
+        }
+
+        // Regressions
+        for (const r of summary.regressions) {
+            const safeUrl = sanitizeFilename(r.url);
+            const safeVariant = sanitizeFilename(r.variantName);
+            const destDir = path.join(baseDir, safeJobId, safeUrl, safeVariant);
+            
+            await download(r.diffUrl, destDir, 'diff.png');
+            if (options.full) {
+                await download(r.baselineUrl, destDir, 'baseline.png');
+                await download(r.currentUrl, destDir, 'current.png');
+            }
+        }
+
+        // Matches (Full only)
+        if (options.full && summary.matches) {
+            for (const m of summary.matches) {
+                const safeUrl = sanitizeFilename(m.url);
+                const safeVariant = sanitizeFilename(m.variantName);
+                const destDir = path.join(baseDir, safeJobId, safeUrl, safeVariant);
+                
+                await download(m.baselineUrl, destDir, 'baseline.png');
+                await download(m.currentUrl, destDir, 'current.png');
+            }
+        }
     }
 
     public async waitForCompletion(
