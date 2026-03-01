@@ -3,11 +3,20 @@ import { Visual } from './index';
 import { JobStatus } from './types';
 
 function parseArgs(args: string[]) {
-    const options: any = { _: [] };
+    const options: any = Object.create(null);
+    options._ = [];
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         if (arg.startsWith('--')) {
             const key = arg.slice(2);
+
+            // Prevent prototype pollution
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+                const value = args[i + 1];
+                if (value && !value.startsWith('--')) i++;
+                continue;
+            }
+
             const value = args[i + 1];
             if (value && !value.startsWith('--')) {
                 options[key] = value;
