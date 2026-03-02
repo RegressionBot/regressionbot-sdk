@@ -125,6 +125,11 @@ async function startJob(url: string, options: any) {
         builder.scan(options.scan, { exclude });
     }
 
+    if (options.check) {
+        const paths = options.check.split(',').map((s: string) => s.trim());
+        paths.forEach((p: string) => builder.check(p));
+    }
+
     if (options['auto-approve']) {
         builder.autoApprove(true);
     }
