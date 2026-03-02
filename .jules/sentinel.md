@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2025-03-02 - [SSRF and Local File Inclusion in Image Download]
+**Vulnerability:** The `JobHandle.downloadResults` method in `src/index.ts` fetched image URLs directly from the API response (e.g., `collageUrl`, `diffUrl`) without validating their protocol. This allowed a malicious API server (or a compromised one) to return URLs with schemes like `file:` or `data:`, leading to Server-Side Request Forgery (SSRF) or arbitrary local file reads.
+**Learning:** `fetch` supports various protocols. When fetching URLs provided by external sources, even seemingly trusted APIs, their protocol must be explicitly validated to prevent reading local files or accessing internal network resources unexpectedly.
+**Prevention:** Always parse untrusted URLs using `new URL()` and verify that the `protocol` is restricted to an allowlist (e.g., `['http:', 'https:']`) before passing them to `fetch()` or similar networking APIs.

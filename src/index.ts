@@ -204,6 +204,17 @@ export class JobHandle {
         const safeJobId = sanitizeFilename(this.jobId);
 
         const download = async (url: string, destDir: string, name: string) => {
+            // Security: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
+            let parsed: URL;
+            try {
+                parsed = new URL(url);
+            } catch (e) {
+                throw new Error(`Invalid URL for download: ${url}`);
+            }
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                throw new Error(`Unsupported protocol for download: ${parsed.protocol}`);
+            }
+
             if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
             const res = await fetch(url);
             const buffer = Buffer.from(await res.arrayBuffer());
