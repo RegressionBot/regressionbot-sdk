@@ -41,11 +41,24 @@ export class Visual {
         const response = await fetch(`${this.apiUrl}${path}`, {
             method,
             headers,
-            body: body ? JSON.stringify(body) : undefined
+            body: body ? JSON.stringify(body) : undefined,
+            // 🛡️ SECURITY: Prevent cross-origin API key leakage via redirects
+            redirect: 'error'
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
+            let errorText = await response.text();
+
+            // 🛡️ SECURITY: Redact API key to prevent exposure in CI logs
+            if (this.apiKey && errorText.includes(this.apiKey)) {
+                errorText = errorText.split(this.apiKey).join('***REDACTED***');
+            }
+
+            // 🛡️ SECURITY: Limit error text length to prevent log flooding (DoS)
+            if (errorText.length > 500) {
+                errorText = errorText.substring(0, 500) + '...';
+            }
+
             throw new Error(`API Error ${response.status}: ${errorText}`);
         }
 

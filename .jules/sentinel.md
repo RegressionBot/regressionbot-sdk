@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2024-05-23 - [Prevent API Key Leakage via Redirects & Error Logs]
+**Vulnerability:** The SDK's `_request` method used `fetch` with default settings (which follows redirects and forwards custom headers like `x-api-key`) and logged raw HTTP error responses. This could leak the API key if the API server was compromised to issue redirects, or if a WAF/proxy reflected the request headers in a 400/500 error page.
+**Learning:** Node's `fetch` API forwards custom headers cross-origin on redirects by default. Error responses from external APIs should never be trusted or logged verbatim without sanitization, as they run in CI environments where logs are accessible to many users.
+**Prevention:** Set `redirect: 'error'` on authenticated API `fetch` calls. Proactively redact sensitive credentials from error response text before throwing/logging, and limit error text length to prevent log flooding.
