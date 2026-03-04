@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2025-05-18 - [Fetch Resource Exhaustion and Credential Leak via Open Redirect]
+**Vulnerability:** The `fetch` calls in `src/index.ts` did not specify timeouts or redirect policies. This allowed malicious servers to hang connections indefinitely (DoS) and potentially steal the `x-api-key` header if the server responded with an open redirect.
+**Learning:** Default `fetch` configurations can be vulnerable to resource exhaustion and credential leakage.
+**Prevention:** Always set `signal: AbortSignal.timeout(ms)` to bound request time and set `redirect: 'error'` or `'manual'` when sending sensitive headers like Authorization or custom API keys.

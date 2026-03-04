@@ -38,10 +38,13 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
+        // Prevent hanging connections and redirect-based credential leaks
         const response = await fetch(`${this.apiUrl}${path}`, {
             method,
             headers,
-            body: body ? JSON.stringify(body) : undefined
+            body: body ? JSON.stringify(body) : undefined,
+            signal: AbortSignal.timeout(30000),
+            redirect: 'error'
         });
 
         if (!response.ok) {
@@ -205,7 +208,7 @@ export class JobHandle {
 
         const download = async (url: string, destDir: string, name: string) => {
             if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-            const res = await fetch(url);
+            const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
             const buffer = Buffer.from(await res.arrayBuffer());
             const filePath = path.join(destDir, name);
             fs.writeFileSync(filePath, buffer);
