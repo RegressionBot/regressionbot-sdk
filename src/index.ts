@@ -38,9 +38,11 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
+        // Prevent API key leakage on redirect
         const response = await fetch(`${this.apiUrl}${path}`, {
             method,
             headers,
+            redirect: 'error',
             body: body ? JSON.stringify(body) : undefined
         });
 
@@ -204,6 +206,11 @@ export class JobHandle {
         const safeJobId = sanitizeFilename(this.jobId);
 
         const download = async (url: string, destDir: string, name: string) => {
+            // Prevent SSRF: only allow http/https protocols
+            const protocol = new URL(url).protocol;
+            if (protocol !== 'http:' && protocol !== 'https:') {
+                throw new Error(`Invalid URL protocol: ${protocol}. Only http and https are allowed.`);
+            }
             if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
             const res = await fetch(url);
             const buffer = Buffer.from(await res.arrayBuffer());

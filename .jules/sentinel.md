@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2024-05-20 - [SSRF/Secret Leak in API Fetch Redirects & Unvalidated Downloads]
+**Vulnerability:** The SDK's `fetch` wrapper followed redirects by default, potentially leaking the `x-api-key` to third-party domains if an attacker controlled the API response. Additionally, `JobHandle.downloadResults` fetched image URLs without validating protocols, allowing potential SSRF using schemes like `file://`.
+**Learning:** `fetch` calls carrying sensitive headers should disable automatic redirect following (`redirect: 'error'`) unless explicitly needed, and client-side downloads based on server-provided URLs must validate that the URL protocol is safe (e.g., `http:` or `https:`).
+**Prevention:** Use `redirect: 'error'` in fetch options when sending secrets and enforce `http:`/`https:` protocol validation before downloading files from dynamic URLs.
