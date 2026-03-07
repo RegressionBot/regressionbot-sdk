@@ -15,6 +15,21 @@ export class Visual {
         if (this.apiUrl.endsWith('/')) {
             this.apiUrl = this.apiUrl.slice(0, -1);
         }
+
+        // Security: Warn about unencrypted data transmission
+        const lowerApiUrl = this.apiUrl.toLowerCase();
+        if (lowerApiUrl.startsWith('http://')) {
+            try {
+                const parsedUrl = new URL(this.apiUrl);
+                if (parsedUrl.hostname !== 'localhost' && parsedUrl.hostname !== '127.0.0.1') {
+                    console.warn('Security Warning: API URL is using HTTP. It is highly recommended to use HTTPS to prevent exposing the API Key.');
+                }
+            } catch (e: any) {
+                // Ignore parsing errors for warning
+            }
+        } else if (!lowerApiUrl.startsWith('https://')) {
+            console.warn(`Security Warning: API URL is using an unrecognized protocol (${this.apiUrl}). It is highly recommended to use HTTPS.`);
+        }
     }
 
     /**
@@ -204,6 +219,11 @@ export class JobHandle {
         const safeJobId = sanitizeFilename(this.jobId);
 
         const download = async (url: string, destDir: string, name: string) => {
+            // Security: Prevent file:// and other insecure protocol downloads (SSRF/Path Traversal mitigation)
+            const lowerUrl = url.toLowerCase();
+            if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
+                throw new Error(`Security Error: Download URL must use HTTP or HTTPS. Provided: ${url}`);
+            }
             if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
             const res = await fetch(url);
             const buffer = Buffer.from(await res.arrayBuffer());
