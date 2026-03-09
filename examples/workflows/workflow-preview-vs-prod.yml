@@ -1,0 +1,35 @@
+name: Visual Regression (Preview vs Production)
+
+# This workflow runs on every Pull Request and compares the unique PR preview 
+# environment against your live production site.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  visual-test:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required if you want RegressionBot to comment on the PR
+    steps:
+      - uses: actions/checkout@v4
+
+      # In a real scenario, you would wait for your preview deployment to be ready here.
+      # For example, using 'unly/wait-on-action' or checking a cloud-provider status.
+
+      - name: Run RegressionBot
+        env:
+          # Add this to your GitHub Repository Secrets
+          REGRESSIONBOT_API_KEY: ${{ secrets.REGRESSIONBOT_API_KEY }}
+        run: |
+          # We use npx to ensure we always have the latest version of the CLI.
+          # 1. Replace the 'test-origin' with your dynamic preview URL.
+          # 2. Replace the 'against' URL with your production site.
+          # 3. Use a consistent 'project' name to track visual history.
+          
+          npx regressionbot@latest https://preview-${{ github.event.pull_request.number }}.your-site.com \
+            --project "marketing-website" \
+            --against https://www.your-site.com \
+            --on "Desktop Chrome, Mobile Safari" \
+            --concurrency 10

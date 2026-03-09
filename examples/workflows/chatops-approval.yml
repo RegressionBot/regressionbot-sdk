@@ -1,0 +1,86 @@
+name: ChatOps Approval
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  approve:
+    # Only run if it's a PR and starts with the command
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/approve-visual')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse Job ID
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.comment.body;
+            // Expected format: /approve-visual <job-id>
+            const parts = body.trim().split(/\s+/);
+            
+            if (parts.length < 2) {
+              core.setFailed('Missing Job ID. Usage: /approve-visual <job-id>');
+              return;
+            }
+            
+            const jobId = parts[1].trim();
+            core.setOutput('job_id', jobId);
+            console.log(`Parsed Job ID: ${jobId}`);
+
+            // Acknowledge command with 'eyes' reaction
+            try {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'eyes'
+              });
+            } catch (e) {
+              console.log('Could not add reaction (permissions?)');
+            }
+
+      - name: Run Approval
+        uses: ./examples/actions/regressionbot
+        with:
+          command: 'approve'
+          api-key: ${{ secrets.REGRESSIONBOT_API_KEY }}
+          job-id: ${{ steps.parse.outputs.job_id }}
+
+      - name: Confirm Success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Acknowledge success with '+1' reaction
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '+1'
+            });
+            
+            await github.rest.issues.createComment({
+               issue_number: context.issue.number,
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               body: `✅ **Baselines Updated!**\nJob `${{ steps.parse.outputs.job_id }}` has been approved.`
+            });
+
+      - name: Report Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+             await github.rest.issues.createComment({
+               issue_number: context.issue.number,
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               body: `❌ **Approval Failed**\nCheck the [Actions Logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.`
+            });

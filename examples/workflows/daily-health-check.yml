@@ -1,0 +1,22 @@
+name: Daily Visual Health Check
+on:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run RegressionBot
+        uses: ./examples/actions/regressionbot
+        with:
+          command: 'check'
+          api-key: ${{ secrets.REGRESSIONBOT_API_KEY }}
+          project: 'production-health'
+          test-origin: 'https://myapp.com'
+          # Since it's a health check, we might not have a separate 'base'.
+          # We just want to see if it changed from "Yesterday".
+          # So we omit base-origin, implying "Compare against last run".
+          concurrency: 20

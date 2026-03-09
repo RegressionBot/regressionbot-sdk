@@ -1,0 +1,27 @@
+name: Managed Baselines Workflow
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Using the local composite action which wraps `npx regressionbot`
+      - name: Run Visual Test
+        uses: ./examples/actions/regressionbot
+        with:
+          command: 'check'
+          api-key: ${{ secrets.REGRESSIONBOT_API_KEY }}
+          project: 'my-managed-app' # Baselines are stored under this ID
+          test-origin: 'https://preview-${{ github.event.pull_request.head.sha }}.myapp.com'
+          # NOTICE: base-origin is OMITTED. 
+          # The API will compare against the "Golden Images" stored in S3.
+          devices: 'Desktop Chrome, iPhone 12'
+          scan: '/pages/**'
+          concurrency: 10

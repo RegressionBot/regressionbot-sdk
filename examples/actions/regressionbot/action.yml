@@ -1,0 +1,70 @@
+name: 'RegressionBot'
+description: 'Automated visual regression testing'
+inputs:
+  command:
+    description: 'The command to run (check, approve, status)'
+    default: 'check'
+    required: true
+  api-key:
+    description: 'RegressionBot API Key'
+    required: true
+  project:
+    description: 'Project ID (required for check)'
+  test-origin:
+    description: 'The URL to test (required for check)'
+  base-origin:
+    description: 'Optional baseline URL'
+  sitemap-url:
+    description: 'Explicit sitemap.xml location'
+  devices:
+    description: 'Comma-separated devices (default: "Desktop Chrome")'
+    default: 'Desktop Chrome'
+  scan:
+    description: 'Glob pattern to scan (e.g. "/blog/**")'
+  exclude:
+    description: 'Comma-separated glob patterns to exclude'
+  auto-approve:
+    description: 'Automatically approve results'
+    default: 'false'
+  mask:
+    description: 'Comma-separated CSS selectors to hide'
+  job-id:
+    description: 'The Job ID (required for approve/status)'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Execute CLI
+      shell: bash
+      env:
+        REGRESSIONBOT_API_KEY: ${{ inputs.api-key }}
+      run: |
+        if [ "${{ inputs.command }}" == "check" ]; then
+          CMD="npx regressionbot@latest ${{ inputs.test-origin }} --project ${{ inputs.project }} --on \"${{ inputs.devices }}\""
+          if [ ! -z "${{ inputs.base-origin }}" ]; then
+            CMD="$CMD --against ${{ inputs.base-origin }}"
+          fi
+          if [ ! -z "${{ inputs.sitemap-url }}" ]; then
+            CMD="$CMD --sitemap ${{ inputs.sitemap-url }}"
+          fi
+          if [ ! -z "${{ inputs.scan }}" ]; then
+            CMD="$CMD --scan \"${{ inputs.scan }}\""
+          fi
+          if [ ! -z "${{ inputs.exclude }}" ]; then
+            CMD="$CMD --exclude \"${{ inputs.exclude }}\""
+          fi
+          if [ "${{ inputs.auto-approve }}" == "true" ]; then
+            CMD="$CMD --auto-approve"
+          fi
+          if [ ! -z "${{ inputs.mask }}" ]; then
+            CMD="$CMD --mask \"${{ inputs.mask }}\""
+          fi
+          eval $CMD
+        elif [ "${{ inputs.command }}" == "approve" ]; then
+          npx regressionbot@latest approve ${{ inputs.job-id }}
+        elif [ "${{ inputs.command }}" == "status" ]; then
+          npx regressionbot@latest status ${{ inputs.job-id }}
+        else
+          echo "Unknown command: ${{ inputs.command }}"
+          exit 1
+        fi
