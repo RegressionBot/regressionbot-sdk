@@ -1,0 +1,24 @@
+name: CLI Testing Workflow
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  cli-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Visual Test via CLI
+        env:
+          REGRESSIONBOT_API_KEY: ${{ secrets.REGRESSIONBOT_API_KEY }}
+        run: |
+          npx regressionbot@latest https://regressionbot.com \
+            --project "cli-test" \
+            --on "Desktop Chrome" \
+            --scan "/"

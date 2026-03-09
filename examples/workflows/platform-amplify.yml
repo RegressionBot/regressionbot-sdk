@@ -1,0 +1,81 @@
+name: Amplify Visual Regression
+
+on:
+  check_run:
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      preview-url:
+        description: 'Manual Preview URL to test'
+        required: true
+      pr-number:
+        description: 'PR Number (for commenting)'
+        required: false
+
+jobs:
+  visual-check:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'check_run' && 
+        github.event.check_run.conclusion == 'success' && 
+        github.event.check_run.name == 'AWS Amplify Console Web Preview'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Required to post comments
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Info
+        id: amplify
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let previewUrl = '';
+            let prNumber = '';
+
+            if (context.eventName === 'workflow_dispatch') {
+              previewUrl = context.payload.inputs['preview-url'];
+              prNumber = context.payload.inputs['pr-number'];
+            } else {
+              const checkRun = context.payload.check_run;
+              previewUrl = checkRun.details_url;
+              if (checkRun.pull_requests && checkRun.pull_requests.length > 0) {
+                prNumber = checkRun.pull_requests[0].number;
+              }
+            }
+
+            core.setOutput('url', previewUrl);
+            core.setOutput('pr', prNumber);
+            console.log(`Found Preview URL: ${previewUrl}`);
+            console.log(`Associated PR: ${prNumber}`);
+
+      - name: Run Visual Check
+        uses: ./examples/actions/regressionbot
+        if: steps.amplify.outputs.url != ''
+        with:
+          command: 'check'
+          api-key: ${{ secrets.REGRESSIONBOT_API_KEY }}
+          project: 'my-amplify-app'
+          test-origin: ${{ steps.amplify.outputs.url }}
+          base-origin: 'https://prod.myapp.com' 
+          devices: 'Desktop Chrome'
+
+      - name: Comment on PR
+        if: failure() && steps.amplify.outputs.pr != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = '${{ steps.amplify.outputs.pr }}';
+            const body = `### ⚠️ Visual Regressions Detected\n\nVisual tests failed on [Amplify Preview](${process.env.TEST_URL}).\nCheck the Actions logs for details.`;
+            
+            await github.rest.issues.createComment({
+              issue_number: parseInt(prNumber),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+        env:
+          TEST_URL: ${{ steps.amplify.outputs.url }}

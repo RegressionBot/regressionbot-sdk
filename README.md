@@ -78,6 +78,14 @@ console.log(`Job ${job.jobId} finished. Overall Score: ${summary.overallScore}`)
 
 The `regressionbot` CLI is the easiest way to interact with the API from your terminal or CI scripts.
 
+## Examples & Integrations
+
+Check out the [examples/](./examples/) directory for real-world integration guides:
+- [GitHub Actions](./examples/actions/regressionbot/): Self-contained composite action for CI.
+- [Preview vs Production](./examples/workflows/workflow-preview-vs-prod.yml): Compare staging URLs to live sites.
+- [AWS Amplify](./examples/workflows/platform-amplify.yml): Wait for builds and test dynamically.
+- [Scheduled Health Checks](./examples/workflows/daily-health-check.yml): Monitor production visuals daily.
+
 ### Authentication
 
 The CLI looks for the following environment variables:

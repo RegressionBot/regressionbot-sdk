@@ -1,0 +1,26 @@
+name: Preview vs Production Workflow
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Using the local composite action which wraps `npx regressionbot`
+      - name: Run Visual Test
+        uses: ./examples/actions/regressionbot
+        with:
+          command: 'check'
+          api-key: ${{ secrets.REGRESSIONBOT_API_KEY }}
+          project: 'my-web-app'
+          test-origin: 'https://preview-${{ github.event.pull_request.head.sha }}.myapp.com'
+          base-origin: 'https://myapp.com' # Production is the baseline
+          devices: 'Desktop Chrome, iPhone 12'
+          scan: '/pages/**'
+          concurrency: 10

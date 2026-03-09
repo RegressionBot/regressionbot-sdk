@@ -1,0 +1,25 @@
+name: Continuous Baselines (Automated)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # This job "seals" the new look of the site as the baseline for future PRs
+  update-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Wait for your production deployment to finish
+      # 2. Capture and auto-approve the new state in one command
+      - name: Update Managed Baselines
+        uses: ./examples/actions/regressionbot
+        with:
+          command: 'check'
+          api-key: ${{ secrets.REGRESSIONBOT_API_KEY }}
+          project: 'my-web-app'
+          test-origin: 'https://myapp.com' # Your live site
+          scan: '/**'
+          concurrency: 20
+          auto-approve: true
