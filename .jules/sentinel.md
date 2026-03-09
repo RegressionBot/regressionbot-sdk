@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2024-05-24 - Path Traversal via URL Pathname
+**Vulnerability:** The `sanitizeUrlToPath` function used URL pathnames to generate filenames for diff images. It stripped out alphanumeric chars but failed to replace backslashes (e.g. `\..\..\etc\passwd`). When combined with `path.join` on Windows, this allowed attackers to write files outside the intended directory via Path Traversal.
+**Learning:** `URL.pathname` doesn't normalize or remove backslashes automatically, so treating it as a safe path string is dangerous, especially on Windows environments where `path.join` interprets them as directory separators.
+**Prevention:** Always use an allowlist approach for filenames by replacing `[^a-zA-Z0-9_]` with underscores.

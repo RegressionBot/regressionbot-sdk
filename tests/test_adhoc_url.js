@@ -24,6 +24,15 @@ function testAdhocSanitization() {
         { 
             input: 'invalid-url', 
             expected: 'invalid_url' 
+        },
+        // Path traversal cases
+        {
+            input: 'https://example.com/..%5c..%5c..%5c..%5cetc%5cpasswd',
+            expected: '___5c___5c___5c___5cetc_5cpasswd'
+        },
+        {
+            input: 'data:text/plain,foo\\..\\..\\..\\..\\etc\\passwd',
+            expected: 'text_plain_foo_____________etc_passwd'
         }
     ];
 
