@@ -24,6 +24,14 @@ function testAdhocSanitization() {
         { 
             input: 'invalid-url', 
             expected: 'invalid_url' 
+        },
+        {
+            input: 'urn:..\\..\\..\\windows\\system32',
+            expected: '_________windows_system32'
+        },
+        {
+            input: 'https://example.com/..%2f..%2f..%2fetc%2fpasswd',
+            expected: '___2f___2f___2fetc_2fpasswd'
         }
     ];
 
