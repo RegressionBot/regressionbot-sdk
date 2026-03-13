@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2024-05-08 - Path Traversal via Job Download URLs
+**Vulnerability:** The `sanitizeUrlToPath` function used to construct local file paths in `JobHandle.downloadResults` allowed characters like `.` and `\` from URL pathnames, as well as URL-encoded variations (`%2e`, `%5c`), enabling path traversal attacks if a malicious result URL was downloaded (e.g. `data:text/plain,..\..\..\etc\passwd`).
+**Learning:** Functions that parse URLs into file paths must actively decode and strip or sanitize *all* filesystem meta-characters. Only removing `/` and `-` is insufficient. The combination of encoded characters and URL protocols (like `data:`) can bypass weak regex filters.
+**Prevention:** Always decode components (`decodeURIComponent`) and pipe the result through a robust filename sanitizer (`sanitizeFilename`) before joining file paths. Never construct filesystem paths directly from parts of untrusted URLs without an explicit whitelist character set.

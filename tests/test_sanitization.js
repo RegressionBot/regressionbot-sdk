@@ -10,6 +10,8 @@ function sanitizeFilename(name) {
 // Tests
 console.log('Testing sanitizeFilename...');
 
+const { sanitizeUrlToPath } = require('../dist/index.js');
+
 try {
     // Basic
     assert.strictEqual(sanitizeFilename('simple'), 'simple');
@@ -33,6 +35,20 @@ try {
     assert.strictEqual(sanitizeFilename(''), 'unknown');
     assert.strictEqual(sanitizeFilename(null), 'unknown');
     assert.strictEqual(sanitizeFilename(undefined), 'unknown');
+
+    console.log('Testing sanitizeUrlToPath...');
+    // Basic paths
+    assert.strictEqual(sanitizeUrlToPath('https://example.com/api/v1/user'), 'api_v1_user');
+    assert.strictEqual(sanitizeUrlToPath('https://example.com/'), 'root');
+
+    // Path traversal in URLs
+    assert.strictEqual(sanitizeUrlToPath('data:text/plain,..\\..\\..\\..\\..\\..\\..\\..\\etc\\passwd'), 'text_plain_________________________etc_passwd');
+    assert.strictEqual(sanitizeUrlToPath('https://example.com/../../etc/passwd'), 'etc_passwd');
+    assert.strictEqual(sanitizeUrlToPath('https://example.com/api/v1/user/1%2f..%2f..%2fetc%2fpasswd'), 'api_v1_user_1_______etc_passwd');
+    assert.strictEqual(sanitizeUrlToPath('https://example.com/api/v1/user/1%5C..%5C..%5Cetc%5Cpasswd'), 'api_v1_user_1_______etc_passwd');
+
+    // Fallback logic
+    assert.strictEqual(sanitizeUrlToPath('invalid_url_string'), 'invalid_url_string');
 
     console.log('All tests passed!');
 } catch (e) {
