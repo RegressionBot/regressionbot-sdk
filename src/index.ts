@@ -41,7 +41,8 @@ export class Visual {
         const response = await fetch(`${this.apiUrl}${path}`, {
             method,
             headers,
-            body: body ? JSON.stringify(body) : undefined
+            body: body ? JSON.stringify(body) : undefined,
+            redirect: 'error'
         });
 
         if (!response.ok) {
@@ -178,7 +179,7 @@ export function sanitizeUrlToPath(urlStr: string): string {
         let path = url.pathname;
         if (path === '/') return 'root';
         // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
-        return path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
+        return path.replace(/^\/|\/$/g, '').replace(/[\/\-\\]/g, '_');
     } catch (e) {
         return sanitizeFilename(urlStr);
     }
