@@ -12,3 +12,8 @@
 **Vulnerability:** The `parseArgs` function in `src/cli.ts` initialized its `options` object with `{ _: [] }` and allowed dynamic assignment of keys directly from user-supplied command line arguments (e.g. `--__proto__ polluted`). This allowed prototype pollution which could manipulate application behavior downstream.
 **Learning:** Argument parsers must sanitize user-supplied keys and ensure they do not write to or inherit from `Object.prototype` to prevent prototype pollution or shadowing native properties.
 **Prevention:** Always use `Object.create(null)` for option objects and explicitly deny keys like `__proto__`, `constructor`, and `prototype` during argument parsing.
+
+## 2025-03-15 - [Path Traversal in URL Sanitization]
+**Vulnerability:** The `sanitizeUrlToPath` function in `src/index.ts` parsed URLs and replaced only slashes and hyphens from the `pathname`, but allowed other characters (like backslashes and dots) to remain. This allowed path traversal (e.g., `data:image/png,..\\..\\..\\Windows\\System32\\cmd.exe` resulting in a pathname of `image/png,..\\..\\..\\Windows\\System32\\cmd.exe`) when the sanitized result was used for writing files in the CLI summary download function.
+**Learning:** Simply replacing slashes is not sufficient for path sanitization, as other schemas (like `data:`) or backslashes (`\`) can still contain path traversal sequences that node's `path` module processes.
+**Prevention:** Always run user-influenced strings (including URL properties like `pathname`) through a robust sanitization function (like `sanitizeFilename` that allows only specific safe characters) before incorporating them into file system operations.
