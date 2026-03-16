@@ -177,8 +177,8 @@ export function sanitizeUrlToPath(urlStr: string): string {
         const url = new URL(urlStr);
         let path = url.pathname;
         if (path === '/') return 'root';
-        // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
-        return path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
+        // Remove leading/trailing slashes and sanitize remaining string to prevent path traversal
+        return sanitizeFilename(path.replace(/^\/|\/$/g, ''));
     } catch (e) {
         return sanitizeFilename(urlStr);
     }
