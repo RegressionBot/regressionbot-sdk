@@ -205,6 +205,10 @@ export class JobHandle {
         return this.sdk._request('/approve', 'POST', { jobId: this.jobId });
     }
 
+    public async getCollage(): Promise<{ jobId: string, collageKey: string, collageUrl: string, regressionCount: number }> {
+        return this.sdk._request(`/job/${encodeURIComponent(this.jobId)}/collage`);
+    }
+
     /**
      * Download images for the job locally.
      * @param options Download options.
@@ -230,8 +234,14 @@ export class JobHandle {
         };
 
         // Collage
-        if (summary.collageUrl) {
-            await download(summary.collageUrl, 'collage.jpg');
+        try {
+            const collage = await this.getCollage();
+            if (collage.collageUrl) {
+                await download(collage.collageUrl, 'collage.jpg');
+            }
+        } catch (e) {
+            // It's okay if there's no collage (e.g. no regressions)
+            console.log("No collage available for download.");
         }
 
         // Regressions

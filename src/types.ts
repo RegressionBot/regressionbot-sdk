@@ -53,7 +53,6 @@ export interface JobSummary {
     matchCount: number;
     newBaselineCount: number;
     errorCount: number;
-    collageUrl?: string;
     regressions: Array<{
         url: string;
         variantName: string;

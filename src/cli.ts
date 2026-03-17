@@ -211,8 +211,13 @@ Matches: ${summary.matchCount}
 Errors: ${summary.errorCount}
 `);
 
-    if (summary.collageUrl) {
-        console.log(`Collage: ${summary.collageUrl}`);
+    try {
+        const collage = await job.getCollage();
+        if (collage.collageUrl) {
+            console.log(`Collage: ${collage.collageUrl}`);
+        }
+    } catch (e) {
+        // No collage available
     }
 
     if (summary.regressionCount > 0) {
