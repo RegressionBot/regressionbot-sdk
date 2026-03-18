@@ -175,10 +175,12 @@ export function sanitizeFilename(name: string): string {
 export function sanitizeUrlToPath(urlStr: string): string {
     try {
         const url = new URL(urlStr);
-        let path = url.pathname;
+        let path = decodeURIComponent(url.pathname);
         if (path === '/') return 'root';
-        // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
-        return path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
+
+        // Remove leading/trailing slashes and replace all non-alphanumeric characters with underscores
+        // to prevent Path Traversal and other injection attacks.
+        return path.replace(/^\/|\/$/g, '').replace(/[^a-zA-Z0-9_]/g, '_');
     } catch (e) {
         return sanitizeFilename(urlStr);
     }
