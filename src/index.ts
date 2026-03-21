@@ -178,7 +178,8 @@ export function sanitizeUrlToPath(urlStr: string): string {
         let path = url.pathname;
         if (path === '/') return 'root';
         // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
-        return path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
+        // 🛡️ Sentinel: Sanitize to prevent path traversal via URL pathname (e.g. data:../..)
+        return path.replace(/^\/|\/$/g, '').replace(/[^a-zA-Z0-9_]/g, '_');
     } catch (e) {
         return sanitizeFilename(urlStr);
     }
