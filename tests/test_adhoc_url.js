@@ -24,6 +24,18 @@ function testAdhocSanitization() {
         { 
             input: 'invalid-url', 
             expected: 'invalid_url' 
+        },
+        {
+            input: 'https://example.com/..%2f..%2f..%2fetc%2fpasswd',
+            expected: '_________etc_passwd'
+        },
+        {
+            input: 'https://example.com/%2e%2e/%2e%2e/%2e%2e/etc/passwd',
+            expected: 'etc_passwd'
+        },
+        {
+            input: 'https://example.com/..\\..\\..\\etc\\passwd',
+            expected: 'etc_passwd'
         }
     ];
 
