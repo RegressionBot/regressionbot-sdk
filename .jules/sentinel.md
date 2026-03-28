@@ -17,3 +17,8 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2026-03-28 - [DoS via Hanging External Requests]
+**Vulnerability:** External API calls (e.g., using `fetch`) lacked timeout configurations. This allowed for potential Denial of Service (DoS) attacks or unhandled hanging processes if the remote server delayed its response indefinitely. Additionally, omitting `await` before returning a promise inside a `try/catch` block bypasses local error handling for promise rejections.
+**Learning:** All outbound HTTP requests must enforce a maximum timeout to ensure application resilience. Using `return await` inside a `try/catch` block ensures errors during the promise resolution (like downloading a large body) are caught locally.
+**Prevention:** Always implement `AbortController` and `setTimeout` with `fetch` to enforce request timeouts. Always use `return await` when returning a promise from inside a `try/catch` block.
