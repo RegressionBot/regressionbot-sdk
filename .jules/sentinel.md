@@ -17,3 +17,8 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2025-03-01 - [DoS via Missing Request Timeouts]
+**Vulnerability:** External API requests using `fetch` in `Visual._request` and image downloads in `JobHandle.downloadResults` lacked timeouts. If the server is unresponsive, the connection will hang indefinitely, leading to resource exhaustion or application denial of service (DoS).
+**Learning:** Native `fetch` does not have a built-in timeout mechanism. All external network calls must have explicit time bounds to prevent hanging.
+**Prevention:** Use `AbortController` and `setTimeout` (cleared in a `finally` block) to enforce a maximum duration for all external `fetch` calls. Ensure that `return await response.json()` is used within the `try` block to catch potential parsing phase timeouts.

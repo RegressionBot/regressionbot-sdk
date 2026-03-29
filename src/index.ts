@@ -38,18 +38,32 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
-        const response = await fetch(`${this.apiUrl}${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined
-        });
+        // [SECURITY] Add timeout to external API requests to prevent hanging/DoS
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+        try {
+            const response = await fetch(`${this.apiUrl}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error ${response.status}: ${errorText}`);
+            }
+
+            return await response.json() as Promise<T>;
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                throw new Error(`API Error: Request to ${path} timed out after 30 seconds`);
+            }
+            throw error; // Rethrow other errors instead of silently swallowing
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        return response.json() as Promise<T>;
     }
 }
 
@@ -230,10 +244,26 @@ export class JobHandle {
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
         const download = async (url: string, name: string) => {
-            const res = await fetch(url);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(jobDir, name);
-            fs.writeFileSync(filePath, buffer);
+            // [SECURITY] Add timeout to image downloads to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                if (!res.ok) {
+                    throw new Error(`Failed to download ${url}: ${res.statusText}`);
+                }
+                const buffer = Buffer.from(await res.arrayBuffer());
+                const filePath = path.join(jobDir, name);
+                fs.writeFileSync(filePath, buffer);
+            } catch (error: any) {
+                if (error.name === 'AbortError') {
+                    throw new Error(`Download Error: Request to ${url} timed out after 60 seconds`);
+                }
+                throw error;
+            } finally {
+                clearTimeout(timeoutId);
+            }
         };
 
         // Collage
