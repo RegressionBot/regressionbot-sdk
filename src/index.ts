@@ -38,18 +38,39 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
-        const response = await fetch(`${this.apiUrl}${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+        try {
+            const response = await fetch(`${this.apiUrl}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                // [SECURITY] Be careful not to leak stack traces, but keep functional error messages.
+                // Assuming RegressionBot API returns a JSON error structure if it's a handled error, or plain text.
+                // We'll include the first 200 chars to help debugging without dumping a massive stack trace.
+                const isLikelyStackTrace = errorText.includes('    at ') || errorText.includes('node_modules');
+                const safeErrorText = isLikelyStackTrace
+                    ? 'Internal Server Error (details suppressed)'
+                    : errorText.slice(0, 200).replace(/\n/g, ' ');
+                throw new Error(`API Error ${response.status}: ${safeErrorText}`);
+            }
+
+            // [SECURITY] Use 'return await' to catch JSON parsing/body download errors in the catch block
+            return await (response.json() as Promise<T>);
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                throw new Error('API Request timed out after 30 seconds');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        return response.json() as Promise<T>;
     }
 }
 
@@ -230,10 +251,22 @@ export class JobHandle {
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
         const download = async (url: string, name: string) => {
-            const res = await fetch(url);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(jobDir, name);
-            fs.writeFileSync(filePath, buffer);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                if (!res.ok) throw new Error(`Download failed with status ${res.status}`);
+                const buffer = Buffer.from(await res.arrayBuffer());
+                const filePath = path.join(jobDir, name);
+                fs.writeFileSync(filePath, buffer);
+            } catch (error: any) {
+                if (error.name === 'AbortError') {
+                    throw new Error(`Download timed out for ${name}`);
+                }
+                throw error;
+            } finally {
+                clearTimeout(timeoutId);
+            }
         };
 
         // Collage
