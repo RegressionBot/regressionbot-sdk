@@ -17,3 +17,8 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2024-04-06 - Missing timeouts on external fetch calls
+**Vulnerability:** External fetch calls in `src/index.ts` lack timeouts. For example, the internal `_request` API and the `download` method fetch remote content without any bounded execution time. An attacker-controlled server or a hanging internal endpoint could cause the SDK process to wait indefinitely, consuming resources and leading to Denial of Service (DoS).
+**Learning:** Even internal API wrappers or image download helpers should enforce timeouts to prevent long-running tasks from stalling applications. Native `fetch` in Node/browsers does not have a default timeout.
+**Prevention:** Always implement an `AbortController` timeout for `fetch` calls. Ensure the timeout is cleared reliably in a `finally` block whether the request succeeds or fails.
