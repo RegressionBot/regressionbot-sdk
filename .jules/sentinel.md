@@ -17,3 +17,8 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2025-03-01 - [DoS/Hanging Request due to missing external timeout]
+**Vulnerability:** External fetch requests inside `_request` and `downloadResults` inside `src/index.ts` did not use `AbortController` timeouts. This could cause the CLI tool or SDK to hang indefinitely or suffer DoS if the external server was unresponsive.
+**Learning:** `fetch` does not have a default timeout. Unbounded external requests without explicit timeout controls are a resilience risk.
+**Prevention:** Always attach an `AbortSignal` with a specific timeout to `fetch` calls, and ensure the timeout is safely cleared in a `finally` block to prevent leaks.
