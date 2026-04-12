@@ -38,18 +38,26 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
-        const response = await fetch(`${this.apiUrl}${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined
-        });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+        try {
+            const response = await fetch(`${this.apiUrl}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+                signal: controller.signal as any // Use AbortSignal
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error ${response.status}: ${errorText}`);
+            }
+
+            return await (response.json() as Promise<T>);
+        } finally {
+            clearTimeout(timeout);
         }
-
-        return response.json() as Promise<T>;
     }
 }
 
@@ -230,10 +238,16 @@ export class JobHandle {
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
         const download = async (url: string, name: string) => {
-            const res = await fetch(url);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(jobDir, name);
-            fs.writeFileSync(filePath, buffer);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            try {
+                const res = await fetch(url, { signal: controller.signal as any });
+                const buffer = Buffer.from(await res.arrayBuffer());
+                const filePath = path.join(jobDir, name);
+                fs.writeFileSync(filePath, buffer);
+            } finally {
+                clearTimeout(timeout);
+            }
         };
 
         // Collage
