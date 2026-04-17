@@ -17,3 +17,8 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2025-04-17 - [No Timeout on Fetch Requests]
+**Vulnerability:** External fetch calls in `src/index.ts` (e.g. `_request` and `download`) lacked timeout controls, making the CLI vulnerable to hanging processes or Denial of Service (DoS) if the remote API is slow or unresponsive.
+**Learning:** Returning a promise (like `response.json()`) inside a `try/finally` block clears the timeout before the promise actually resolves, defeating the purpose of the timeout.
+**Prevention:** Use `return await (response.json() as Promise<T>)` inside the `try` block to ensure the `finally` block with `clearTimeout` only executes after the body is fully downloaded and parsed.
