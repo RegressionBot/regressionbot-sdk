@@ -17,3 +17,8 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2025-03-01 - [Denial of Service (DoS) via Unbounded fetch Calls]
+**Vulnerability:** The SDK used `fetch()` in `_request` and `downloadResults` without setting a timeout via `AbortController`. If the API or external resource was unresponsive, the request would hang indefinitely, potentially leading to resource exhaustion (DoS) as connections remain open.
+**Learning:** Default behavior of `fetch` in Node.js does not timeout. Any external API call must have explicit timeout handling to avoid leaving open connections which exhaust available memory/handles.
+**Prevention:** Always implement `AbortController` timeouts for all network operations (e.g., `fetch` or HTTP clients) and ensure timeouts are properly cleared in a `finally` block to prevent leaks.
