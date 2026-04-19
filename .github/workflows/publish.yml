@@ -18,11 +18,6 @@ jobs:
         with:
           node-version: '22' # Node 22+ is required for native Trusted Publishing support
       
-      - name: Upgrade npm
-        run: |
-          corepack enable
-          corepack prepare npm@latest --activate
-      
       - run: npm install
       - run: npm run build
 
