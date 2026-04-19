@@ -1,4 +1,14 @@
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobResult } from './types';
+import { 
+    sanitizeFilename, 
+    sanitizeUrlToPath, 
+    warnIfInsecure, 
+    validateProtocol, 
+    handleApiError, 
+    fetchWithTimeout 
+} from './security';
+
+export { sanitizeFilename, sanitizeUrlToPath };
 
 export class Visual {
     private apiKey: string;
@@ -15,6 +25,9 @@ export class Visual {
         if (this.apiUrl.endsWith('/')) {
             this.apiUrl = this.apiUrl.slice(0, -1);
         }
+
+        // 🛡️ SECURITY: Warn about unencrypted data transmission
+        warnIfInsecure(this.apiUrl);
     }
 
     /**
@@ -38,18 +51,18 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
-        const response = await fetch(`${this.apiUrl}${path}`, {
+        const response = await fetchWithTimeout(`${this.apiUrl}${path}`, {
             method,
             headers,
-            body: body ? JSON.stringify(body) : undefined
+            body: body ? JSON.stringify(body) : undefined,
+            redirect: 'error'
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+            await handleApiError(response, this.apiKey);
         }
 
-        return response.json() as Promise<T>;
+        return await response.json() as T;
     }
 }
 
@@ -162,35 +175,6 @@ export class JobBuilder {
     }
 }
 
-export function sanitizeFilename(name: string): string {
-    if (!name) return 'unknown';
-    // Allow alphanumeric and underscore. Replace everything else (including hyphens and spaces) with underscore.
-    return name.replace(/[^a-zA-Z0-9_]/g, '_');
-}
-
-/**
- * Converts a URL into a clean, flat string representing its path.
- * e.g. https://example.com/ai/jules-agent -> ai_jules_agent
- */
-export function sanitizeUrlToPath(urlStr: string): string {
-    try {
-        const url = new URL(urlStr);
-        let path = url.pathname;
-        try {
-            path = decodeURIComponent(path);
-        } catch (e) {
-            // Ignore malformed URIs
-        }
-        if (path === '/') return 'root';
-        // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
-        // [SECURITY] Also apply sanitizeFilename to prevent Path Traversal via dots/backslashes
-        const cleaned = path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
-        return sanitizeFilename(cleaned);
-    } catch (e) {
-        return sanitizeFilename(urlStr);
-    }
-}
-
 export class JobHandle {
     private sdk: Visual;
     public jobId: string;
@@ -230,7 +214,11 @@ export class JobHandle {
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
         const download = async (url: string, name: string) => {
-            const res = await fetch(url);
+            // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
+            validateProtocol(url, 'download URL');
+
+            // 🛡️ SECURITY: Fetch with timeout
+            const res = await fetchWithTimeout(url);
             const buffer = Buffer.from(await res.arrayBuffer());
             const filePath = path.join(jobDir, name);
             fs.writeFileSync(filePath, buffer);

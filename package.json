@@ -1,6 +1,6 @@
 {
   "name": "regressionbot",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "The official SDK for regressionbot.com - the simplest way to automate visual regression testing.",
   "homepage": "https://regressionbot.com",
   "repository": {
@@ -21,6 +21,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w",
+    "test": "node tests/test_adhoc_url.js && node tests/test_sanitization.js && node tests/test_api_integration.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

@@ -26,6 +26,14 @@ function testAdhocSanitization() {
             expected: 'invalid_url' 
         },
         {
+            input: 'mailto:..\\..\\etc\\passwd',
+            expected: '______etc_passwd'
+        },
+        {
+            input: 'data:text/html,../../../../etc/passwd',
+            expected: 'text_html_____________etc_passwd'
+        },
+        {
             input: 'https://example.com/..%2f..%2f..%2fetc%2fpasswd',
             expected: '_________etc_passwd'
         },
