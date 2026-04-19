@@ -17,3 +17,23 @@
 **Vulnerability:** The `sanitizeUrlToPath` function used URL `pathname` extraction and replaced forward slashes and hyphens, but failed to handle URL-encoded sequences (`%2e%2e%2f` etc.) or Windows-style backslashes (`\`). This allowed path traversal to bypass sanitization when constructing filenames for local downloads in `JobHandle.downloadResults`.
 **Learning:** Naive replacement of forward slashes is insufficient to prevent path traversal on URLs, as `URL.pathname` leaves URL-encoded characters and backslashes intact, which are then evaluated by `path.join` or the OS file system.
 **Prevention:** Always decode URL components first, and then apply a robust filename sanitization routine (e.g. replacing any character not in an explicit whitelist, like `[a-zA-Z0-9_]`) before using the output in file system operations.
+
+## 2026-04-19 - [Denial of Service via Hanging API and Download Requests]
+**Vulnerability:** The SDK's `fetch` calls lacked timeouts, making the application vulnerable to Denial of Service (DoS) if the API or download server hung indefinitely. This could block the main execution thread or exhaust resources in CI environments.
+**Learning:** All network requests to external services must have reasonable timeouts to ensure application resilience and prevent resource exhaustion.
+**Prevention:** Use `AbortController` to implement timeouts for all `fetch` calls, typically around 10-30 seconds depending on the expected response time.
+
+## 2026-04-19 - [API Key Leakage via Redirects and Error Logs]
+**Vulnerability:** The `Visual._request` method followed redirects by default, potentially forwarding the `x-api-key` header to third-party domains. Additionally, raw error responses from the API were thrown/logged, which could contain the reflected API key or other sensitive data.
+**Learning:** Sensitive headers should not be automatically forwarded on redirects. Error messages from external sources must be sanitized and length-limited before being exposed to logs or users.
+**Prevention:** Set `redirect: 'error'` on authenticated `fetch` calls. Proactively redact sensitive credentials from error response text and limit the length of error messages.
+
+## 2026-04-19 - [SSRF and Local File Inclusion in Image Download]
+**Vulnerability:** `JobHandle.downloadResults` fetched image URLs directly from API responses without validating the protocol. This allowed a malicious API server to return URLs with `file:` or `data:` schemes, leading to SSRF or arbitrary local file reads during the download process.
+**Learning:** When fetching resources from URLs provided by external sources, always validate that the protocol is restricted to safe schemes (e.g., `http:` and `https:`).
+**Prevention:** Use `new URL(url).protocol` to verify that download URLs use only authorized protocols before passing them to networking APIs.
+
+## 2026-04-19 - [Unencrypted Sensitive Data Transmission]
+**Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
+**Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
+**Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).

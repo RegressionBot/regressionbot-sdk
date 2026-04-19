@@ -15,6 +15,21 @@ export class Visual {
         if (this.apiUrl.endsWith('/')) {
             this.apiUrl = this.apiUrl.slice(0, -1);
         }
+
+        // 🛡️ SECURITY: Warn about unencrypted data transmission
+        const lowerApiUrl = this.apiUrl.toLowerCase();
+        if (lowerApiUrl.startsWith('http://')) {
+            try {
+                const parsedUrl = new URL(this.apiUrl);
+                if (parsedUrl.hostname !== 'localhost' && parsedUrl.hostname !== '127.0.0.1') {
+                    console.warn('Security Warning: API URL is using HTTP. It is highly recommended to use HTTPS to prevent exposing the API Key.');
+                }
+            } catch (e: any) {
+                // Ignore parsing errors for warning
+            }
+        } else if (!lowerApiUrl.startsWith('https://')) {
+            console.warn(`Security Warning: API URL is using an unrecognized protocol (${this.apiUrl}). It is highly recommended to use HTTPS.`);
+        }
     }
 
     /**
@@ -38,18 +53,40 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
-        const response = await fetch(`${this.apiUrl}${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined
-        });
+        // 🛡️ SECURITY: Add timeout to prevent hanging requests/DoS
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
+        try {
+            const response = await fetch(`${this.apiUrl}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+                signal: controller.signal,
+                // 🛡️ SECURITY: Prevent cross-origin API key leakage via redirects
+                redirect: 'error'
+            });
+
+            if (!response.ok) {
+                let errorText = await response.text();
+
+                // 🛡️ SECURITY: Redact API key to prevent exposure in CI logs
+                if (this.apiKey && errorText.includes(this.apiKey)) {
+                    errorText = errorText.split(this.apiKey).join('***REDACTED***');
+                }
+
+                // 🛡️ SECURITY: Limit error text length to prevent log flooding (DoS)
+                if (errorText.length > 500) {
+                    errorText = errorText.substring(0, 500) + '...';
+                }
+
+                throw new Error(`API Error ${response.status}: ${errorText}`);
+            }
+
+            return await response.json() as T;
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        return response.json() as Promise<T>;
     }
 }
 
@@ -182,10 +219,9 @@ export function sanitizeUrlToPath(urlStr: string): string {
             // Ignore malformed URIs
         }
         if (path === '/') return 'root';
-        // Remove leading/trailing slashes and replace remaining slashes/hyphens with underscores
-        // [SECURITY] Also apply sanitizeFilename to prevent Path Traversal via dots/backslashes
-        const cleaned = path.replace(/^\/|\/$/g, '').replace(/[\/\-]/g, '_');
-        return sanitizeFilename(cleaned);
+        // 🛡️ SECURITY: Sanitize to prevent path traversal via URL pathname (e.g. data:../..)
+        // Remove leading/trailing slashes and replace all non-alphanumeric chars with underscores
+        return path.replace(/^\/|\/$/g, '').replace(/[^a-zA-Z0-9_]/g, '_');
     } catch (e) {
         return sanitizeFilename(urlStr);
     }
@@ -230,10 +266,29 @@ export class JobHandle {
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
         const download = async (url: string, name: string) => {
-            const res = await fetch(url);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(jobDir, name);
-            fs.writeFileSync(filePath, buffer);
+            // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
+            let parsed: URL;
+            try {
+                parsed = new URL(url);
+            } catch (e) {
+                throw new Error(`Invalid URL for download: ${url}`);
+            }
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                throw new Error(`Unsupported protocol for download: ${parsed.protocol}`);
+            }
+
+            // 🛡️ SECURITY: Add timeout to prevent hanging requests/DoS
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                const buffer = Buffer.from(await res.arrayBuffer());
+                const filePath = path.join(jobDir, name);
+                fs.writeFileSync(filePath, buffer);
+            } finally {
+                clearTimeout(timeoutId);
+            }
         };
 
         // Collage
