@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { Visual, sanitizeFilename } from './index';
+import { Visual } from './index';
+import { sanitizeFilename } from './security';
 import { JobStatus } from './types';
 import * as path from 'path';
 

@@ -1,4 +1,14 @@
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobResult } from './types';
+import { 
+    sanitizeFilename, 
+    sanitizeUrlToPath, 
+    warnIfInsecure, 
+    validateProtocol, 
+    handleApiError, 
+    fetchWithTimeout 
+} from './security';
+
+export { sanitizeFilename, sanitizeUrlToPath };
 
 export class Visual {
     private apiKey: string;
@@ -17,19 +27,7 @@ export class Visual {
         }
 
         // 🛡️ SECURITY: Warn about unencrypted data transmission
-        const lowerApiUrl = this.apiUrl.toLowerCase();
-        if (lowerApiUrl.startsWith('http://')) {
-            try {
-                const parsedUrl = new URL(this.apiUrl);
-                if (parsedUrl.hostname !== 'localhost' && parsedUrl.hostname !== '127.0.0.1') {
-                    console.warn('Security Warning: API URL is using HTTP. It is highly recommended to use HTTPS to prevent exposing the API Key.');
-                }
-            } catch (e: any) {
-                // Ignore parsing errors for warning
-            }
-        } else if (!lowerApiUrl.startsWith('https://')) {
-            console.warn(`Security Warning: API URL is using an unrecognized protocol (${this.apiUrl}). It is highly recommended to use HTTPS.`);
-        }
+        warnIfInsecure(this.apiUrl);
     }
 
     /**
@@ -53,40 +51,18 @@ export class Visual {
             'x-api-key': this.apiKey
         };
 
-        // 🛡️ SECURITY: Add timeout to prevent hanging requests/DoS
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetchWithTimeout(`${this.apiUrl}${path}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+            redirect: 'error'
+        });
 
-        try {
-            const response = await fetch(`${this.apiUrl}${path}`, {
-                method,
-                headers,
-                body: body ? JSON.stringify(body) : undefined,
-                signal: controller.signal,
-                // 🛡️ SECURITY: Prevent cross-origin API key leakage via redirects
-                redirect: 'error'
-            });
-
-            if (!response.ok) {
-                let errorText = await response.text();
-
-                // 🛡️ SECURITY: Redact API key to prevent exposure in CI logs
-                if (this.apiKey && errorText.includes(this.apiKey)) {
-                    errorText = errorText.split(this.apiKey).join('***REDACTED***');
-                }
-
-                // 🛡️ SECURITY: Limit error text length to prevent log flooding (DoS)
-                if (errorText.length > 500) {
-                    errorText = errorText.substring(0, 500) + '...';
-                }
-
-                throw new Error(`API Error ${response.status}: ${errorText}`);
-            }
-
-            return await response.json() as T;
-        } finally {
-            clearTimeout(timeoutId);
+        if (!response.ok) {
+            await handleApiError(response, this.apiKey);
         }
+
+        return await response.json() as T;
     }
 }
 
@@ -199,34 +175,6 @@ export class JobBuilder {
     }
 }
 
-export function sanitizeFilename(name: string): string {
-    if (!name) return 'unknown';
-    // Allow alphanumeric and underscore. Replace everything else (including hyphens and spaces) with underscore.
-    return name.replace(/[^a-zA-Z0-9_]/g, '_');
-}
-
-/**
- * Converts a URL into a clean, flat string representing its path.
- * e.g. https://example.com/ai/jules-agent -> ai_jules_agent
- */
-export function sanitizeUrlToPath(urlStr: string): string {
-    try {
-        const url = new URL(urlStr);
-        let path = url.pathname;
-        try {
-            path = decodeURIComponent(path);
-        } catch (e) {
-            // Ignore malformed URIs
-        }
-        if (path === '/') return 'root';
-        // 🛡️ SECURITY: Sanitize to prevent path traversal via URL pathname (e.g. data:../..)
-        // Remove leading/trailing slashes and replace all non-alphanumeric chars with underscores
-        return path.replace(/^\/|\/$/g, '').replace(/[^a-zA-Z0-9_]/g, '_');
-    } catch (e) {
-        return sanitizeFilename(urlStr);
-    }
-}
-
 export class JobHandle {
     private sdk: Visual;
     public jobId: string;
@@ -267,28 +215,13 @@ export class JobHandle {
 
         const download = async (url: string, name: string) => {
             // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
-            let parsed: URL;
-            try {
-                parsed = new URL(url);
-            } catch (e) {
-                throw new Error(`Invalid URL for download: ${url}`);
-            }
-            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-                throw new Error(`Unsupported protocol for download: ${parsed.protocol}`);
-            }
+            validateProtocol(url, 'download URL');
 
-            // 🛡️ SECURITY: Add timeout to prevent hanging requests/DoS
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-            try {
-                const res = await fetch(url, { signal: controller.signal });
-                const buffer = Buffer.from(await res.arrayBuffer());
-                const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
-            } finally {
-                clearTimeout(timeoutId);
-            }
+            // 🛡️ SECURITY: Fetch with timeout
+            const res = await fetchWithTimeout(url);
+            const buffer = Buffer.from(await res.arrayBuffer());
+            const filePath = path.join(jobDir, name);
+            fs.writeFileSync(filePath, buffer);
         };
 
         // Collage
