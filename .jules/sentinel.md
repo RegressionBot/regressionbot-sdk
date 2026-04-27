@@ -37,3 +37,8 @@
 **Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
 **Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
 **Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).
+
+## 2024-05-24 - [Incomplete Fetch Timeout Vulnerability]
+**Vulnerability:** External API calls using `fetch` with a manual `setTimeout` and `AbortController` cleared the timeout immediately after the Promise resolved (which only guarantees headers were received). This left the body parsing phase unprotected against hanging or slow responses, creating a Denial of Service (DoS) risk.
+**Learning:** In modern Node environments, Promises returned by `fetch` only resolve when the headers are received. Protecting the full lifecycle, including streaming the body, requires keeping the abort signal active for the entire duration.
+**Prevention:** Always use `AbortSignal.timeout(timeoutMs)` when implementing a fetch timeout, as it intrinsically protects both the header and body phases without manual lifecycle management.
