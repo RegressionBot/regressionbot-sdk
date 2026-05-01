@@ -37,3 +37,8 @@
 **Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
 **Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
 **Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).
+
+## 2024-05-01 - Prevent DoS by protecting Fetch body parsing with AbortSignal.timeout
+**Vulnerability:** The SDK's `fetchWithTimeout` utility used a manual `setTimeout` to call `AbortController.abort()`, but the timeout was cleared in a `finally` block immediately after the `fetch` promise resolved (which happens when headers are received). This meant the downloading of the response body was unprotected. A malicious server could slowly stream the response body (or hang indefinitely) and tie up system resources or cause a Denial of Service.
+**Learning:** Using `setTimeout` and clearing it after the `fetch` resolution only protects the initial connection and header parsing phase. It does not protect the body parsing phase.
+**Prevention:** In Node.js 20+, always use `AbortSignal.timeout(timeoutMs)` when passing an abort signal to `fetch`. This natively protects the entire request lifecycle, ensuring both the header resolution and the body stream are aborted if the timeout triggers.

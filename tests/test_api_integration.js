@@ -71,7 +71,13 @@ async function testApiIntegration() {
         } catch (e) {
             const duration = Date.now() - start;
             assert.ok(duration >= 9000 && duration <= 12000, `Timeout should be around 10s, but was ${duration}ms`);
-            assert.ok(e.name === 'AbortError' || e.message.includes('abort'), `Expected AbortError, got: ${e.message}`);
+            assert.ok(
+                e.name === 'AbortError' ||
+                e.name === 'TimeoutError' ||
+                e.message.toLowerCase().includes('timeout') ||
+                e.message.toLowerCase().includes('abort'),
+                `Expected AbortError or TimeoutError, got name: ${e.name}, message: ${e.message}`
+            );
             console.log(`  OK: Request timed out correctly in ${duration}ms`);
         }
         slowServer.close();

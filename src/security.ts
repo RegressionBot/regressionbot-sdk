@@ -97,17 +97,12 @@ export async function fetchWithTimeout(
     options: RequestInit = {}, 
     timeoutMs: number = 10000
 ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        return await fetch(url, {
-            ...options,
-            signal: controller.signal,
-            // 🛡️ SECURITY: Prevent cross-origin credential leakage via redirects
-            redirect: options.redirect || 'error'
-        });
-    } finally {
-        clearTimeout(timeoutId);
-    }
+    // 🛡️ SECURITY: Use AbortSignal.timeout to protect the entire request lifecycle (headers + body)
+    // A manual setTimeout cleared after headers exposes the body stream to hanging (DoS).
+    return await fetch(url, {
+        ...options,
+        signal: options.signal || AbortSignal.timeout(timeoutMs),
+        // 🛡️ SECURITY: Prevent cross-origin credential leakage via redirects
+        redirect: options.redirect || 'error'
+    });
 }
