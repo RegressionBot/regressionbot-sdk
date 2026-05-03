@@ -71,10 +71,33 @@ async function testApiIntegration() {
         } catch (e) {
             const duration = Date.now() - start;
             assert.ok(duration >= 9000 && duration <= 12000, `Timeout should be around 10s, but was ${duration}ms`);
-            assert.ok(e.name === 'AbortError' || e.message.includes('abort'), `Expected AbortError, got: ${e.message}`);
+            assert.ok(e.name === 'AbortError' || e.name === 'TimeoutError' || e.message.includes('abort'), `Expected AbortError or TimeoutError, got: ${e.message}`);
             console.log(`  OK: Request timed out correctly in ${duration}ms`);
         }
         slowServer.close();
+
+        // Test body timeout (simulated body hang)
+        console.log('  Testing body timeout...');
+        const bodyHangServer = http.createServer((req, res) => {
+            // Send headers, but hang on body
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.write('{"partial": "');
+        });
+        const bodyHangPort = 3005;
+        bodyHangServer.listen(bodyHangPort);
+
+        const bodyHangSdk = new Visual(mockApiKey, `http://localhost:${bodyHangPort}`);
+        const startBody = Date.now();
+        try {
+            await bodyHangSdk._request('/body-hang');
+            assert.fail('Request body should have timed out');
+        } catch (e) {
+            const duration = Date.now() - startBody;
+            assert.ok(duration >= 9000 && duration <= 12000, `Body timeout should be around 10s, but was ${duration}ms`);
+            assert.ok(e.name === 'AbortError' || e.name === 'TimeoutError' || e.name === 'TypeError' || e.message.includes('abort') || e.message.includes('terminated'), `Expected TimeoutError or TypeError (terminated), got: ${e.name} ${e.message}`);
+            console.log(`  OK: Request body timed out correctly in ${duration}ms`);
+        }
+        bodyHangServer.close();
 
         // Test API Key redaction in error messages
         console.log('  Testing API Key redaction...');
