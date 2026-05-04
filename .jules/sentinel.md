@@ -37,3 +37,8 @@
 **Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
 **Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
 **Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).
+
+## 2026-04-19 - [Denial of Service via Hanging Response Bodies]
+**Vulnerability:** The `fetchWithTimeout` utility used `setTimeout` to abort the request, but cleared the timeout as soon as the fetch Promise resolved (which happens when headers are received). This left the parsing of the response body vulnerable to a Denial of Service (DoS) attack if the server stopped sending data, hanging the process indefinitely.
+**Learning:** Manual timeouts that are cleared after headers are received do not protect against slow or hanging response bodies. The entire request lifecycle must be protected.
+**Prevention:** Use `AbortSignal.timeout()` instead of manual timeouts, as it enforces the timeout across the entire fetch operation, including body streaming and parsing.
