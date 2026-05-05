@@ -37,3 +37,8 @@
 **Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
 **Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
 **Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).
+
+## 2026-04-19 - [Incomplete Timeout Protection on Body Parsing (DoS)]
+**Vulnerability:** The previous implementation of `fetchWithTimeout` used `setTimeout` to abort the controller but cleared the timeout in a `finally` block immediately after the `fetch` promise resolved. In Node.js, the `fetch` promise resolves as soon as the HTTP headers are received. This meant the timeout was disabled before the body was fully downloaded, leaving the application vulnerable to Denial of Service (DoS) if the server sent headers but hung indefinitely while transmitting the body.
+**Learning:** Manual timeout mechanisms for `fetch` must remain active until the entire response body is parsed/downloaded. Clearing the timeout early only protects against slow header responses.
+**Prevention:** Prefer using `AbortSignal.timeout()` which correctly applies the timeout across the entire lifecycle of the request, including headers and body stream.
