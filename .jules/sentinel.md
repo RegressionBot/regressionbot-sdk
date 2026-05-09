@@ -37,3 +37,8 @@
 **Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
 **Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
 **Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).
+
+## 2026-04-19 - [Denial of Service via Hanging Request Body Downloads]
+**Vulnerability:** The `fetchWithTimeout` function implemented timeouts using `setTimeout` and `AbortController`. This only covered the time it took to receive the initial HTTP headers. If an attacker's server responded with headers but never sent the body (or sent it extremely slowly), the `fetch` body parsing methods (like `.json()` or `.arrayBuffer()`) would hang indefinitely, leading to a Denial of Service.
+**Learning:** Manual timeout implementations using `setTimeout` and `AbortController` in `fetch` often fail to account for the body download phase unless the timeout is explicitly extended around the body parsing promises.
+**Prevention:** Use Node's built-in `AbortSignal.timeout(timeoutMs)` instead of manual implementations, as it covers the entire request lifecycle (both headers and body).
