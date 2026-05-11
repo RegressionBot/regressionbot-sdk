@@ -37,3 +37,8 @@
 **Vulnerability:** The SDK allowed the use of `http://` for the `apiUrl`, which could expose the `x-api-key` in plaintext over the network.
 **Learning:** SDKs should encourage or enforce secure communication protocols (HTTPS) to protect sensitive credentials.
 **Prevention:** Implement checks to warn users when an insecure protocol is used for API communication, except for local development (localhost).
+
+## 2026-04-20 - [DoS via Ignored Abort Signals in fetchWithTimeout]
+**Vulnerability:** The \`fetchWithTimeout\` utility overrode caller-provided \`AbortSignal\`s by exclusively using its own timeout signal. This prevented callers from manually aborting requests, leading to potential resource exhaustion if users cancelled actions but the underlying network requests continued.
+**Learning:** When writing fetch wrappers that apply timeouts, you must merge the timeout signal with any signal provided by the caller to ensure both manual aborts and automatic timeouts are respected.
+**Prevention:** Use \`AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])\` when configuring fetch signals.
