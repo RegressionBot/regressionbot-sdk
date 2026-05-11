@@ -76,6 +76,32 @@ async function testApiIntegration() {
         }
         slowServer.close();
 
+        // Test timeout on hanging body
+        console.log('  Testing timeout (hanging body)...');
+        const hangingBodyServer = http.createServer((req, res) => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.write('{"status":');
+            // Never responds with the rest of the body
+        });
+        const hangingBodyPort = 3004;
+        hangingBodyServer.listen(hangingBodyPort);
+
+        const hangingBodySdk = new Visual(mockApiKey, `http://localhost:${hangingBodyPort}`);
+        const startHanging = Date.now();
+        try {
+            await hangingBodySdk._request('/hang-body');
+            assert.fail('Request should have timed out');
+        } catch (e) {
+            const duration = Date.now() - startHanging;
+            assert.ok(duration >= 9000 && duration <= 12000, `Timeout should be around 10s, but was ${duration}ms`);
+            assert.ok(
+                e.name === 'TimeoutError' || (e.name === 'TypeError' && e.message.includes('terminated')),
+                `Expected TimeoutError or TypeError: terminated, got: ${e.name}: ${e.message}`
+            );
+            console.log(`  OK: Request body timed out correctly in ${duration}ms`);
+        }
+        hangingBodyServer.close();
+
         // Test API Key redaction in error messages
         console.log('  Testing API Key redaction...');
         const errorServer = http.createServer((req, res) => {
