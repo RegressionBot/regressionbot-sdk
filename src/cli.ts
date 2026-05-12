@@ -178,6 +178,7 @@ Waiting for completion...
         summary.regressions.forEach((r: any) => {
             console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
+            if (r.aiSummary) console.log(`  Summary: ${r.aiSummary}`);
         });
         console.log(`\nTo approve these changes, run:\n  npx regressionbot approve ${job.jobId}`);
         process.exit(1); 
@@ -221,6 +222,7 @@ Errors: ${summary.errorCount}
         for (const r of summary.regressions) {
             console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
+            if (r.aiSummary) console.log(`  Summary: ${r.aiSummary}`);
         }
     }
 

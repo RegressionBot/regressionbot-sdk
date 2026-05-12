@@ -1,6 +1,8 @@
 # RegressionBot SDK
 
-The declarative visual regression testing SDK.
+The official SDK for [RegressionBot.com](https://regressionbot.com) — the simplest way to automate visual regression testing.
+
+RegressionBot is a declarative visual regression testing platform that helps you catch UI changes before they reach production. This SDK provides a fluent, chainable API to define your test scope, run visual tests, and manage baselines programmatically.
 
 ## Features
 
@@ -31,6 +33,12 @@ const job = await visual
 
 const status = await job.waitForCompletion();
 console.log(`Stability Score: ${status.overallScore}/100`);
+
+// Download only diff images
+await job.downloadResults();
+
+// Download all images (baseline, current, diff)
+await job.downloadResults({ full: true });
 ```
 
 ### Full Matrix Example
@@ -72,11 +80,22 @@ const result = await job.waitForCompletion();
 const summary = await job.getSummary();
 
 console.log(`Job ${job.jobId} finished. Overall Score: ${summary.overallScore}`);
+
+// RegressionBot AI Summary
+if (summary.regressions.length > 0) {
+  console.log(`\n${summary.regressions.length} regressions found:`);
+  for (const regression of summary.regressions) {
+    if (regression.aiSummary) {
+      console.log(`\n🤖 RegressionBot Summary for ${regression.url}:`);
+      console.log(`> ${regression.aiSummary}`);
+    }
+  }
+}
 ```
 
 ## CLI Usage
 
-The `regressionbot` CLI is the easiest way to interact with the API from your terminal or CI scripts.
+The `regressionbot` CLI is the easiest way to interact with the [RegressionBot API](https://regressionbot.com) from your terminal or CI scripts.
 
 ## Examples & Integrations
 
@@ -85,6 +104,8 @@ Check out the [examples/](./examples/) directory for real-world integration guid
 - [Preview vs Production](./examples/workflows/workflow-preview-vs-prod.yml): Compare staging URLs to live sites.
 - [AWS Amplify](./examples/workflows/platform-amplify.yml): Wait for builds and test dynamically.
 - [Scheduled Health Checks](./examples/workflows/daily-health-check.yml): Monitor production visuals daily.
+
+Visit [RegressionBot.com](https://regressionbot.com) for more documentation, pricing, and to create your account.
 
 ### Authentication
 
@@ -144,6 +165,10 @@ const job = await visual
 const status = await job.waitForCompletion();
 console.log(`Stability Score: ${status.overallScore}/100`);
 
+// Get detailed summary
+const summary = await job.getSummary();
+console.log(`Regressions: ${summary.regressionCount}`);
+
 // Download only diff images
 await job.downloadResults();
 
@@ -159,3 +184,7 @@ await job.downloadResults({ full: true });
 npm version patch # or minor/major
 npm publish
 ```
+
+---
+
+Made with ❤️ by [RegressionBot](https://regressionbot.com). Report issues on [GitHub](https://github.com/cbestall/regressionbot-sdk/issues).

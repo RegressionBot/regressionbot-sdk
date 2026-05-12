@@ -25,11 +25,14 @@ export interface JobResult {
     baselineKey?: string;
     diffKey?: string;
     isNewBaseline?: boolean;
+    errorMessage?: string;
+    aiSummary?: string;
+    variantName: string;
 }
 
 export interface JobStatus {
     jobId: string;
-    status: 'PROCESSING' | 'COMPLETED' | 'APPROVED' | 'FAILED' | 'INITIALIZING';
+    status: 'PROCESSING' | 'COMPLETED' | 'APPROVED' | 'FAILED' | 'INITIALIZING' | 'FINISHING';
     error?: string;
     progress?: {
         total: number;
@@ -39,7 +42,6 @@ export interface JobStatus {
     executionTime?: number;
     results?: JobResult[];
     createdAt?: string;
-    collageKey?: string;
 }
 
 export interface JobSummary {
@@ -62,6 +64,7 @@ export interface JobSummary {
         baselineUrl: string;
         currentUrl: string;
         diffUrl: string;
+        aiSummary?: string;
     }>;
     matches: Array<{
         url: string;
@@ -69,6 +72,7 @@ export interface JobSummary {
         score: number;
         baselineUrl: string;
         currentUrl: string;
+        aiSummary?: string;
     }>;
     newBaselines: Array<{
         url: string;
@@ -77,6 +81,9 @@ export interface JobSummary {
     errors: Array<{
         url: string;
         errorMessage: string;
+        variantName: string;
         score: number;
     }>;
 }
+
+export type RegressionBotSummary = JobSummary;
