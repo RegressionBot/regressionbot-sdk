@@ -43,9 +43,15 @@ async function runDemo() {
     console.log('Waiting for results...');
     const result = await job.waitForCompletion();
     
+    // Get detailed summary
+    const summary = await job.getSummary();
+    
     if (result.overallScore < 100) {
         console.log(`⚠️ Visual regressions detected! Stability Score: ${result.overallScore}/100`);
-        console.log(`View the diffs here: ${result.summaryUrl}`);
+        console.log(`Regressions: ${summary.regressionCount}`);
+        if (summary.collageUrl) {
+            console.log(`Collage: ${summary.collageUrl}`);
+        }
     } else {
         console.log('✅ No visual changes detected. Site is stable!');
     }

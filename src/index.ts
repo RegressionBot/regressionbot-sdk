@@ -1,4 +1,4 @@
-import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobResult } from './types';
+import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, RegressionBotSummary, JobResult } from './types';
 import { 
     sanitizeFilename, 
     sanitizeUrlToPath, 
@@ -8,7 +8,8 @@ import {
     fetchWithTimeout 
 } from './security';
 
-export { sanitizeFilename, sanitizeUrlToPath };
+export { sanitizeFilename, sanitizeUrlToPath, Viewports };
+export type { RegressionBotSummary, JobStatus, JobSummary, Viewport, VRConfig };
 
 export class Visual {
     private apiKey: string;
@@ -196,8 +197,15 @@ export class JobHandle {
         return this.sdk._request<JobSummary>(`/job/${encodeURIComponent(this.jobId)}/summary`);
     }
 
-    public async approve(): Promise<{ message: string }> {
+    public async approve(): Promise<{ message: string; jobId: string; approvedUrlsCount: number; failedCount?: number }> {
         return this.sdk._request('/approve', 'POST', { jobId: this.jobId });
+    }
+
+    /**
+     * Trigger on-demand collage generation and get a pre-signed URL for it.
+     */
+    public async getCollage(): Promise<{ jobId: string; collageKey: string; collageUrl: string; regressionCount: number }> {
+        return this.sdk._request(`/job/${encodeURIComponent(this.jobId)}/collage`);
     }
 
     /**
@@ -218,14 +226,24 @@ export class JobHandle {
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
         const download = async (url: string, name: string) => {
-            // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
-            validateProtocol(url, 'download URL');
+            try {
+                // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
+                validateProtocol(url, 'download URL');
 
-            // 🛡️ SECURITY: Fetch with timeout
-            const res = await fetchWithTimeout(url);
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const filePath = path.join(jobDir, name);
-            fs.writeFileSync(filePath, buffer);
+                // 🛡️ SECURITY: Fetch with timeout
+                const res = await fetchWithTimeout(url);
+                
+                if (!res.ok) {
+                    console.warn(`Warning: Failed to download ${name} from ${url} (Status: ${res.status})`);
+                    return;
+                }
+                
+                const buffer = Buffer.from(await res.arrayBuffer());
+                const filePath = path.join(jobDir, name);
+                fs.writeFileSync(filePath, buffer);
+            } catch (err: any) {
+                console.warn(`Warning: Failed to download ${name}: ${err.message}`);
+            }
         };
 
         // Collage
@@ -261,7 +279,6 @@ export class JobHandle {
         intervalMs: number = 2000, 
         callback?: (status: JobStatus) => void
     ): Promise<JobStatus> {
-        await new Promise(resolve => setTimeout(resolve, 3000));
         while (true) {
             const status = await this.getStatus();
             if (callback) callback(status);
