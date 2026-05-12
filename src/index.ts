@@ -28,6 +28,7 @@ export class Visual {
 
         // 🛡️ SECURITY: Warn about unencrypted data transmission
         warnIfInsecure(this.apiUrl);
+        validateProtocol(this.apiUrl, 'API URL');
     }
 
     /**
@@ -80,6 +81,7 @@ export class JobBuilder {
     };
 
     constructor(sdk: Visual, testOrigin: string) {
+        validateProtocol(testOrigin, 'testOrigin');
         this.sdk = sdk;
         this.manifest = {
             testOrigin: testOrigin.replace(/\/$/, ''),
@@ -91,11 +93,13 @@ export class JobBuilder {
     }
 
     public against(origin: string): this {
+        validateProtocol(origin, 'baseOrigin');
         this.manifest.baseOrigin = origin.replace(/\/$/, '');
         return this;
     }
 
     public sitemap(url: string): this {
+        validateProtocol(url, 'sitemapUrl');
         this.manifest.sitemapUrl = url;
         return this;
     }

@@ -42,3 +42,7 @@
 **Vulnerability:** The \`fetchWithTimeout\` utility overrode caller-provided \`AbortSignal\`s by exclusively using its own timeout signal. This prevented callers from manually aborting requests, leading to potential resource exhaustion if users cancelled actions but the underlying network requests continued.
 **Learning:** When writing fetch wrappers that apply timeouts, you must merge the timeout signal with any signal provided by the caller to ensure both manual aborts and automatic timeouts are respected.
 **Prevention:** Use \`AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])\` when configuring fetch signals.
+## 2026-05-12 - SSRF via Unvalidated URL Protocols
+**Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
+**Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
+**Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
