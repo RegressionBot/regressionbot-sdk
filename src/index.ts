@@ -1,3 +1,5 @@
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, RegressionBotSummary, JobResult } from './types';
 import { 
     sanitizeFilename, 
@@ -238,9 +240,12 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                // 🛡️ SECURITY: Stream the response to prevent OOM DoS on large files
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                if (res.body) {
+                    const dest = fs.createWriteStream(filePath);
+                    await pipeline(Readable.fromWeb(res.body as any), dest);
+                }
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
