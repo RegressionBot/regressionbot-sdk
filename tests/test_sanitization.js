@@ -1,39 +1,36 @@
 const assert = require('assert');
-
-function sanitizeFilename(name) {
-    if (!name) return 'unknown';
-    // Allow only alphanumeric, space, underscore, hyphen.
-    // Replace everything else with underscore.
-    return name.replace(/[^a-zA-Z0-9_\- ]/g, '_');
-}
+const { sanitizeFilename } = require('../dist/index');
 
 // Tests
 console.log('Testing sanitizeFilename...');
 
 try {
-    // Basic
+    // Basic - alphanumeric and underscores allowed, spaces/hyphens are replaced
     assert.strictEqual(sanitizeFilename('simple'), 'simple');
-    assert.strictEqual(sanitizeFilename('Simple 123'), 'Simple 123');
-    assert.strictEqual(sanitizeFilename('Desktop-Chrome'), 'Desktop-Chrome');
-
+    assert.strictEqual(sanitizeFilename('Simple_123'), 'Simple_123');
+    assert.strictEqual(sanitizeFilename('Desktop-Chrome'), 'Desktop_Chrome');
+    
     // Traversal
     assert.strictEqual(sanitizeFilename('../../etc/passwd'), '______etc_passwd');
     assert.strictEqual(sanitizeFilename('..\\..\\windows'), '______windows');
-
-    // Dots
+    
+    // Special characters are replaced with underscore
     assert.strictEqual(sanitizeFilename('file.txt'), 'file_txt');
     assert.strictEqual(sanitizeFilename('.env'), '_env');
-
-    // Windows forbidden
+    
+    // Windows forbidden characters
     assert.strictEqual(sanitizeFilename('file:name'), 'file_name');
     assert.strictEqual(sanitizeFilename('file?name'), 'file_name');
     assert.strictEqual(sanitizeFilename('file*name'), 'file_name');
-
-    // Empty result handling (though regex returns ____ for ..)
+    
+    // Spaces are replaced
+    assert.strictEqual(sanitizeFilename('Simple 123'), 'Simple_123');
+    
+    // Empty result handling
     assert.strictEqual(sanitizeFilename(''), 'unknown');
     assert.strictEqual(sanitizeFilename(null), 'unknown');
     assert.strictEqual(sanitizeFilename(undefined), 'unknown');
-
+    
     console.log('All tests passed!');
 } catch (e) {
     console.error('Test failed:', e);
