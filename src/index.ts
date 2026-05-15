@@ -1,4 +1,6 @@
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, RegressionBotSummary, JobResult } from './types';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import { 
     sanitizeFilename, 
     sanitizeUrlToPath, 
@@ -238,9 +240,16 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    console.warn(`Warning: Response body is empty for ${name}`);
+                    return;
+                }
+
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const dest = fs.createWriteStream(filePath);
+
+                // 🛡️ SECURITY: Stream the response directly to the file system to prevent DoS via memory exhaustion
+                await pipeline(Readable.fromWeb(res.body as import('stream/web').ReadableStream), dest);
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
