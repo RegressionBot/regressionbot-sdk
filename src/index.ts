@@ -7,6 +7,8 @@ import {
     handleApiError, 
     fetchWithTimeout 
 } from './security';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 
 export { sanitizeFilename, sanitizeUrlToPath, Viewports };
 export type { RegressionBotSummary, JobStatus, JobSummary, Viewport, VRConfig };
@@ -238,9 +240,16 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                if (!res.body) {
+                    console.warn(`Warning: Empty response body for ${name} from ${url}`);
+                    return;
+                }
+                // 🛡️ SECURITY: Prevent memory exhaustion (OOM) by streaming data to the file system instead of buffering
+                await pipeline(
+                    Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                    fs.createWriteStream(filePath)
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
