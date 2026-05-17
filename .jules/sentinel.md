@@ -46,3 +46,8 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+
+## 2026-06-25 - [Memory Exhaustion (OOM) in File Downloads]
+**Vulnerability:** The `JobHandle.downloadResults` function was using `Buffer.from(await res.arrayBuffer())` to read the entirety of fetched image resources into memory before saving them to disk. This can lead to a Denial of Service via memory exhaustion if downloading massive files, especially when downloading multiple files concurrently.
+**Learning:** Large responses should never be fully buffered in memory before processing unless absolutely necessary.
+**Prevention:** Use Node.js streams (e.g., `pipeline(Readable.fromWeb(res.body), fs.createWriteStream(path))`) to stream downloads directly to disk, maintaining a small, consistent memory footprint regardless of file size.

@@ -1,3 +1,6 @@
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import type { ReadableStream } from 'stream/web';
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, RegressionBotSummary, JobResult } from './types';
 import { 
     sanitizeFilename, 
@@ -238,9 +241,17 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                // 🛡️ SECURITY: Prevent memory exhaustion (OOM) by streaming data directly to disk
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+
+                if (res.body) {
+                    await pipeline(
+                        Readable.fromWeb(res.body as ReadableStream),
+                        fs.createWriteStream(filePath)
+                    );
+                } else {
+                    console.warn(`Warning: Response body is null for ${url}`);
+                }
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
