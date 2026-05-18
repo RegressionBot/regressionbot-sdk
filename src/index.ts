@@ -202,13 +202,6 @@ export class JobHandle {
     }
 
     /**
-     * Trigger on-demand collage generation and get a pre-signed URL for it.
-     */
-    public async getCollage(): Promise<{ jobId: string; collageKey: string; collageUrl: string; regressionCount: number }> {
-        return this.sdk._request(`/job/${encodeURIComponent(this.jobId)}/collage`);
-    }
-
-    /**
      * Download images for the job locally.
      * @param options Download options.
      */
@@ -245,11 +238,6 @@ export class JobHandle {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
         };
-
-        // Collage
-        if (summary.collageUrl) {
-            await download(summary.collageUrl, 'collage.jpg');
-        }
 
         // Regressions
         for (const r of summary.regressions) {

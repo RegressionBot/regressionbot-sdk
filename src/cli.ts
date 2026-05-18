@@ -213,10 +213,6 @@ Matches: ${summary.matchCount}
 Errors: ${summary.errorCount}
 `);
 
-    if (summary.collageUrl) {
-        console.log(`Collage: ${summary.collageUrl}`);
-    }
-
     if (summary.regressionCount > 0) {
         console.log('❌ Regressions found:');
         for (const r of summary.regressions) {

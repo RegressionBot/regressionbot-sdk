@@ -27,12 +27,13 @@ export interface JobResult {
     isNewBaseline?: boolean;
     errorMessage?: string;
     aiSummary?: string;
+    visualMatchScore?: number;
     variantName: string;
 }
 
 export interface JobStatus {
     jobId: string;
-    status: 'PROCESSING' | 'COMPLETED' | 'APPROVED' | 'FAILED' | 'INITIALIZING' | 'FINISHING';
+    status: 'PROCESSING' | 'COMPLETED' | 'APPROVED' | 'FAILED' | 'INITIALIZING' | 'FINISHING' | 'SUMMARIZING';
     error?: string;
     progress?: {
         total: number;
@@ -55,7 +56,6 @@ export interface JobSummary {
     matchCount: number;
     newBaselineCount: number;
     errorCount: number;
-    collageUrl?: string;
     regressions: Array<{
         url: string;
         variantName: string;

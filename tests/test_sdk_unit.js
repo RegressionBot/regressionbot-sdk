@@ -150,27 +150,6 @@ async function testJobHandleMethods() {
     console.log('  OK: approve() works');
     restoreFetch();
     
-    // Test getCollage()
-    console.log('  Testing getCollage()...');
-    setMockFetch(async (url) => {
-        assert.strictEqual(url, 'http://localhost:9999/job/test-job-456/collage');
-        return {
-            ok: true,
-            json: async () => ({ 
-                jobId: 'test-job-456',
-                collageKey: 'collage-123.jpg',
-                collageUrl: 'https://cdn.example.com/collage-123.jpg',
-                regressionCount: 3
-            })
-        };
-    });
-    
-    const collage = await job.getCollage();
-    assert.strictEqual(collage.collageUrl, 'https://cdn.example.com/collage-123.jpg');
-    assert.strictEqual(collage.regressionCount, 3);
-    console.log('  OK: getCollage() works');
-    restoreFetch();
-    
     console.log('All JobHandle tests passed!\n');
 }
 
