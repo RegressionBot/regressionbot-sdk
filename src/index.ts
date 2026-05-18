@@ -1,4 +1,6 @@
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, RegressionBotSummary, JobResult } from './types';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import { 
     sanitizeFilename, 
     sanitizeUrlToPath, 
@@ -238,9 +240,19 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    console.warn(`Warning: No body received for ${name}`);
+                    return;
+                }
+
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+
+                // 🛡️ SECURITY: Use stream pipeline to prevent memory exhaustion (DoS) from large files
+                await pipeline(
+                    Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                    fileStream
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
