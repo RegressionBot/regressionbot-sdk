@@ -1,15 +1,15 @@
-import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, RegressionBotSummary, JobResult } from './types';
-import { 
-    sanitizeFilename, 
-    sanitizeUrlToPath, 
-    warnIfInsecure, 
-    validateProtocol, 
-    handleApiError, 
-    fetchWithTimeout 
+import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobProgress, PageResult } from './types';
+import {
+    sanitizeFilename,
+    sanitizeUrlToPath,
+    warnIfInsecure,
+    validateProtocol,
+    handleApiError,
+    fetchWithTimeout
 } from './security';
 
 export { sanitizeFilename, sanitizeUrlToPath, Viewports };
-export type { RegressionBotSummary, JobStatus, JobSummary, Viewport, VRConfig };
+export type { PageResult, JobProgress, JobStatus, JobSummary, Viewport, VRConfig };
 
 export class Visual {
     private apiKey: string;
@@ -202,13 +202,6 @@ export class JobHandle {
     }
 
     /**
-     * Trigger on-demand collage generation and get a pre-signed URL for it.
-     */
-    public async getCollage(): Promise<{ jobId: string; collageKey: string; collageUrl: string; regressionCount: number }> {
-        return this.sdk._request(`/job/${encodeURIComponent(this.jobId)}/collage`);
-    }
-
-    /**
      * Download images for the job locally.
      * @param options Download options.
      */
@@ -246,20 +239,15 @@ export class JobHandle {
             }
         };
 
-        // Collage
-        if (summary.collageUrl) {
-            await download(summary.collageUrl, 'collage.jpg');
-        }
-
         // Regressions
         for (const r of summary.regressions) {
             const nameBase = sanitizeUrlToPath(r.url);
-            const safeVariant = sanitizeFilename(r.variantName);
-            
-            await download(r.diffUrl, `${nameBase}_diff_${safeVariant}.png`);
+            const safeVariant = sanitizeFilename(r.variant);
+
+            if (r.diffUrl) await download(r.diffUrl, `${nameBase}_diff_${safeVariant}.png`);
             if (options.full) {
-                await download(r.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
-                await download(r.currentUrl, `${nameBase}_current_${safeVariant}.png`);
+                if (r.baselineUrl) await download(r.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
+                if (r.currentUrl) await download(r.currentUrl, `${nameBase}_current_${safeVariant}.png`);
             }
         }
 
@@ -267,10 +255,10 @@ export class JobHandle {
         if (options.full && summary.matches) {
             for (const m of summary.matches) {
                 const nameBase = sanitizeUrlToPath(m.url);
-                const safeVariant = sanitizeFilename(m.variantName);
-                
-                await download(m.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
-                await download(m.currentUrl, `${nameBase}_current_${safeVariant}.png`);
+                const safeVariant = sanitizeFilename(m.variant);
+
+                if (m.baselineUrl) await download(m.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
+                if (m.currentUrl) await download(m.currentUrl, `${nameBase}_current_${safeVariant}.png`);
             }
         }
     }
