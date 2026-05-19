@@ -169,16 +169,16 @@ Waiting for completion...
     if (summary.newBaselineCount > 0) {
         console.log('\n✨ New Baselines Created:');
         summary.newBaselines.forEach((nb: any) => {
-            console.log(`- ${nb.url} [${nb.variantName}]`);
+            console.log(`- ${nb.url} [${nb.variant}]`);
         });
     }
 
     if (summary.regressionCount > 0) {
         console.log('\n❌ Regressions found:');
         summary.regressions.forEach((r: any) => {
-            console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
+            console.log(`- ${r.url} [${r.variant}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
-            if (r.aiSummary) console.log(`  Summary: ${r.aiSummary}`);
+            if (r.regressionbotSummary) console.log(`  Summary: ${r.regressionbotSummary}`);
         });
         console.log(`\nTo approve these changes, run:\n  npx regressionbot approve ${job.jobId}`);
         process.exit(1); 
@@ -216,9 +216,9 @@ Errors: ${summary.errorCount}
     if (summary.regressionCount > 0) {
         console.log('❌ Regressions found:');
         for (const r of summary.regressions) {
-            console.log(`- ${r.url} [${r.variantName}] (Score: ${r.score.toFixed(2)})`);
+            console.log(`- ${r.url} [${r.variant}] (Score: ${r.score.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
-            if (r.aiSummary) console.log(`  Summary: ${r.aiSummary}`);
+            if (r.regressionbotSummary) console.log(`  Summary: ${r.regressionbotSummary}`);
         }
     }
 
