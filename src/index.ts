@@ -219,6 +219,9 @@ export class JobHandle {
         const summary = await this.getSummary();
         const fs = require('fs');
         const path = require('path');
+        const { pipeline } = require('stream/promises');
+        const { Readable } = require('stream');
+
         const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
         const safeJobId = sanitizeFilename(this.jobId);
         const jobDir = path.join(baseDir, safeJobId);
@@ -238,9 +241,19 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    console.warn(`Warning: Failed to download ${name} from ${url} (No body)`);
+                    return;
+                }
+
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+
+                // 🛡️ SECURITY: Stream the response body directly to a file to prevent memory exhaustion (OOM) vulnerabilities
+                await pipeline(
+                    Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                    fileStream
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
