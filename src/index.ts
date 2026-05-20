@@ -231,9 +231,20 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    console.warn(`Warning: Response body is empty for ${name} from ${url}`);
+                    return;
+                }
+
+                const { pipeline } = require('stream/promises');
+                const { Readable } = require('stream');
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+
+                // 🛡️ SECURITY: Stream the response directly to the filesystem to prevent memory exhaustion (OOM)
+                await pipeline(
+                    Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                    fs.createWriteStream(filePath)
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }

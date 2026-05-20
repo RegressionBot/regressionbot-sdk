@@ -46,3 +46,7 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+## 2026-05-24 - [Memory Exhaustion (OOM) Vulnerability in File Downloads]
+**Vulnerability:** The SDK's file download mechanism (`JobHandle.downloadResults`) read the entire HTTP response body into memory using `res.arrayBuffer()` before writing it to a file. For large files or concurrent downloads, this would exhaust available memory, resulting in a Denial of Service via Out of Memory (OOM) crash.
+**Learning:** Loading untrusted or large payloads entirely into memory before processing is dangerous, particularly in Node.js applications that have inherent memory constraints.
+**Prevention:** Use streaming APIs (like `pipeline` and `Readable.fromWeb`) to stream network responses directly to the filesystem or next processing stage, completely bypassing large memory buffers.
