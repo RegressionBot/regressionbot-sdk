@@ -230,10 +230,21 @@ export class JobHandle {
                     console.warn(`Warning: Failed to download ${name} from ${url} (Status: ${res.status})`);
                     return;
                 }
+                if (!res.body) {
+                    console.warn(`Warning: No body received for ${name} from ${url}`);
+                    return;
+                }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const { pipeline } = require('stream/promises');
+                const { Readable } = require('stream');
+
+                // 🛡️ SECURITY: Prevent DoS via memory exhaustion (OOM) by streaming the response directly to disk
+                // rather than buffering the entire arrayBuffer in memory.
+                await pipeline(
+                    Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                    fs.createWriteStream(filePath)
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
