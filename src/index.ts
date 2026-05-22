@@ -231,9 +231,20 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                // 🛡️ SECURITY: Stream the response directly to a file to prevent memory exhaustion (DoS)
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+
+                if (res.body) {
+                    const fileStream = fs.createWriteStream(filePath);
+                    const { pipeline } = require('stream/promises');
+                    const { Readable } = require('stream');
+                    await pipeline(
+                        Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                        fileStream
+                    );
+                } else {
+                    throw new Error('Response body is missing');
+                }
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
