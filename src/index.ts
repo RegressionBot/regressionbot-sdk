@@ -7,6 +7,9 @@ import {
     handleApiError,
     fetchWithTimeout
 } from './security';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import type { ReadableStream } from 'stream/web';
 
 export { sanitizeFilename, sanitizeUrlToPath, Viewports };
 export type { PageResult, JobProgress, JobStatus, JobSummary, Viewport, VRConfig };
@@ -231,9 +234,15 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    throw new Error('Response body is empty');
+                }
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const dest = fs.createWriteStream(filePath);
+                await pipeline(
+                    Readable.fromWeb(res.body as ReadableStream),
+                    dest
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }

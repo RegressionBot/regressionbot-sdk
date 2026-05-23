@@ -46,3 +46,8 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+
+## 2024-05-23 - [Memory Exhaustion / DoS via arrayBuffer]
+**Vulnerability:** The SDK used `res.arrayBuffer()` to download images, which buffers the entire file into memory before writing to disk. This can cause Out-Of-Memory (OOM) crashes and DoS if an attacker (or compromised API) returns excessively large files.
+**Learning:** Loading large or untrusted network responses fully into memory is a security risk. Streaming responses directly to their destination avoids memory bloat.
+**Prevention:** Use Node.js streams (e.g. `pipeline(Readable.fromWeb(res.body), fs.createWriteStream(filePath))`) to process large downloads chunk-by-chunk without loading them entirely into memory.
