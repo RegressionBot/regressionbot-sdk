@@ -1,3 +1,9 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import type { ReadableStream } from 'stream/web';
+
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobProgress, PageResult } from './types';
 import {
     sanitizeFilename,
@@ -210,8 +216,6 @@ export class JobHandle {
         baseDir?: string 
     } = {}): Promise<void> {
         const summary = await this.getSummary();
-        const fs = require('fs');
-        const path = require('path');
         const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
         const safeJobId = sanitizeFilename(this.jobId);
         const jobDir = path.join(baseDir, safeJobId);
@@ -231,9 +235,19 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    console.warn(`Warning: Failed to download ${name} from ${url} (No body in response)`);
+                    return;
+                }
+
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+
+                // 🛡️ SECURITY: Stream the response body to prevent memory exhaustion (OOM) DoS
+                await pipeline(
+                    Readable.fromWeb(res.body as ReadableStream),
+                    fileStream
+                );
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
