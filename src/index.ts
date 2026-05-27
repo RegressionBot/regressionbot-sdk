@@ -7,6 +7,11 @@ import {
     handleApiError,
     fetchWithTimeout
 } from './security';
+import * as fs from 'fs';
+import * as path from 'path';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import type { ReadableStream } from 'stream/web';
 
 export { sanitizeFilename, sanitizeUrlToPath, Viewports };
 export type { PageResult, JobProgress, JobStatus, JobSummary, Viewport, VRConfig };
@@ -210,8 +215,6 @@ export class JobHandle {
         baseDir?: string 
     } = {}): Promise<void> {
         const summary = await this.getSummary();
-        const fs = require('fs');
-        const path = require('path');
         const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
         const safeJobId = sanitizeFilename(this.jobId);
         const jobDir = path.join(baseDir, safeJobId);
@@ -231,9 +234,15 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    console.warn(`Warning: Response body is empty for ${url}`);
+                    return;
+                }
+
+                // 🛡️ SECURITY: Prevent memory exhaustion (OOM DoS) by streaming the response directly to disk
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+                await pipeline(Readable.fromWeb(res.body as ReadableStream), fileStream);
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }

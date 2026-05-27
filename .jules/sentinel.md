@@ -46,3 +46,8 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+
+## 2026-06-25 - [Memory Exhaustion (DoS) via Large ArrayBuffer Buffering]
+**Vulnerability:** `JobHandle.downloadResults` buffered entire response bodies into memory using `Buffer.from(await res.arrayBuffer())` before writing them to disk. This made the application vulnerable to memory exhaustion (OOM DoS) when downloading very large files.
+**Learning:** Loading arbitrary large files completely into memory via `res.arrayBuffer()` is a significant DoS risk. Node.js `fetch` implementations must handle large downloads using streams to maintain a low and predictable memory footprint. When interacting with DOM-style `ReadableStream` bodies in Node.js TypeScript, type assertions (e.g., `import type { ReadableStream } from 'stream/web'`) are often necessary for safe translation to Node streams.
+**Prevention:** Stream network responses directly to disk using `stream.pipeline` and `Readable.fromWeb(res.body as ReadableStream)`. Additionally, ensure the response body exists *before* opening a file write stream to prevent file descriptor leaks or dangling empty files.
