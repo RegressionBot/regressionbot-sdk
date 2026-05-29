@@ -1,3 +1,4 @@
+import type { ReadableStream } from 'stream/web';
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobProgress, PageResult } from './types';
 import {
     sanitizeFilename,
@@ -212,6 +213,9 @@ export class JobHandle {
         const summary = await this.getSummary();
         const fs = require('fs');
         const path = require('path');
+        const { pipeline } = require('stream/promises');
+        const { Readable } = require('stream');
+
         const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
         const safeJobId = sanitizeFilename(this.jobId);
         const jobDir = path.join(baseDir, safeJobId);
@@ -230,10 +234,16 @@ export class JobHandle {
                     console.warn(`Warning: Failed to download ${name} from ${url} (Status: ${res.status})`);
                     return;
                 }
+
+                if (!res.body) {
+                    console.warn(`Warning: Failed to download ${name} from ${url} (Empty response body)`);
+                    return;
+                }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                // 🛡️ SECURITY: Prevent DoS/OOM by streaming instead of buffering in memory
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+                await pipeline(Readable.fromWeb(res.body as ReadableStream), fileStream);
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }

@@ -46,3 +46,7 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+## 2026-05-29 - [Memory Exhaustion (DoS/OOM) via Network Payloads]
+**Vulnerability:** The `JobHandle.downloadResults` method buffered entire file downloads into memory using `const buffer = Buffer.from(await res.arrayBuffer());`. This can lead to memory exhaustion and Denial of Service (DoS) if large files are downloaded or if the process handles multiple concurrent downloads.
+**Learning:** Never buffer large network payloads into memory when they can be written directly to a destination.
+**Prevention:** Stream network responses directly to disk using `Readable.fromWeb(res.body)` and `stream.pipeline` to maintain a low and constant memory footprint.
