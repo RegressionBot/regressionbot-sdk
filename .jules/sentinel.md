@@ -46,3 +46,7 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+## 2026-05-30 - [DoS Vulnerability via Memory Exhaustion in File Download]
+**Vulnerability:** The `downloadResults` method in `src/index.ts` read the entire contents of a file download into memory at once using `res.arrayBuffer()`. For very large files, this would exhaust available memory, crashing the application (DoS).
+**Learning:** External or large files should never be read entirely into memory at once. Doing so introduces an easy DoS vector. Instead, data should be streamed from the source directly to the destination.
+**Prevention:** Use Node.js streams (like `pipeline` with `fs.createWriteStream`) to download and save files rather than buffering the entire content into memory with `arrayBuffer()`. Additionally, ensure data is checked (e.g. `res.body` exists) before creating the local write stream to avoid leaving dangling empty files if an error occurs.
