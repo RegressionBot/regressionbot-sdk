@@ -242,7 +242,7 @@ export class JobHandle {
         // Regressions
         for (const r of summary.regressions) {
             const nameBase = sanitizeUrlToPath(r.url);
-            const safeVariant = sanitizeFilename(r.variant);
+            const safeVariant = sanitizeFilename(r.variantName);
 
             if (r.diffUrl) await download(r.diffUrl, `${nameBase}_diff_${safeVariant}.png`);
             if (options.full) {
@@ -255,7 +255,7 @@ export class JobHandle {
         if (options.full && summary.matches) {
             for (const m of summary.matches) {
                 const nameBase = sanitizeUrlToPath(m.url);
-                const safeVariant = sanitizeFilename(m.variant);
+                const safeVariant = sanitizeFilename(m.variantName);
 
                 if (m.baselineUrl) await download(m.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
                 if (m.currentUrl) await download(m.currentUrl, `${nameBase}_current_${safeVariant}.png`);

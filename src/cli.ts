@@ -169,14 +169,14 @@ Waiting for completion...
     if (summary.newBaselineCount > 0) {
         console.log('\n✨ New Baselines Created:');
         summary.newBaselines.forEach((nb: any) => {
-            console.log(`- ${nb.url} [${nb.variant}]`);
+            console.log(`- ${nb.url} [${nb.variantName}]`);
         });
     }
 
     if (summary.regressionCount > 0) {
         console.log('\n❌ Regressions found:');
         summary.regressions.forEach((r: any) => {
-            console.log(`- ${r.url} [${r.variant}] (Score: ${r.score.toFixed(2)})`);
+            console.log(`- ${r.url} [${r.variantName}] (Score: ${r.visualMatchScore.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
             if (r.regressionbotSummary) console.log(`  Summary: ${r.regressionbotSummary}`);
         });
@@ -216,7 +216,7 @@ Errors: ${summary.errorCount}
     if (summary.regressionCount > 0) {
         console.log('❌ Regressions found:');
         for (const r of summary.regressions) {
-            console.log(`- ${r.url} [${r.variant}] (Score: ${r.score.toFixed(2)})`);
+            console.log(`- ${r.url} [${r.variantName}] (Score: ${r.visualMatchScore.toFixed(2)})`);
             console.log(`  Diff: ${r.diffUrl}`);
             if (r.regressionbotSummary) console.log(`  Summary: ${r.regressionbotSummary}`);
         }
