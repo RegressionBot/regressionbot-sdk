@@ -46,3 +46,8 @@
 **Vulnerability:** The SDK accepts URLs for the API, test origin, base origin, and sitemap without validating their protocol, allowing potential SSRF or local file read via file:// or ftp://.
 **Learning:** Always validate protocols on all external URL inputs before dispatching them or sending them to a backend, even if the backend is expected to handle them.
 **Prevention:** Use a centralized validateProtocol utility on all user-supplied URLs to strictly enforce HTTP/HTTPS.
+
+## 2026-06-01 - [Denial of Service (OOM) via File Downloads]
+**Vulnerability:** The SDK's `downloadResults` method buffered entire images into memory using `Buffer.from(await res.arrayBuffer())`. When downloading large numbers of images or very large image files, this could exhaust memory and crash the CLI tool (OOM DoS).
+**Learning:** Loading entire files into memory limits the scalability of tools and creates an attack vector where large responses can induce a DoS condition.
+**Prevention:** Always use Node.js streams (`pipeline`, `Readable.fromWeb(res.body)`, `fs.createWriteStream`) when writing external resources to disk to keep memory overhead low and constant.

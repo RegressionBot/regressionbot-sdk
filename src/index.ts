@@ -218,7 +218,12 @@ export class JobHandle {
 
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
+        const { pipeline } = require('stream/promises');
+        const { Readable } = require('stream');
+
         const download = async (url: string, name: string) => {
+            const filePath = path.join(jobDir, name);
+            let writeStream: any;
             try {
                 // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
                 validateProtocol(url, 'download URL');
@@ -231,10 +236,23 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
-                const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                if (!res.body) {
+                    throw new Error('Response body is empty');
+                }
+
+                // 🛡️ SECURITY: Stream large files to disk to prevent OOM vulnerabilities
+                writeStream = fs.createWriteStream(filePath);
+                await pipeline(
+                    Readable.fromWeb(res.body as import('stream/web').ReadableStream),
+                    writeStream
+                );
             } catch (err: any) {
+                if (writeStream) {
+                    writeStream.destroy();
+                }
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
         };
