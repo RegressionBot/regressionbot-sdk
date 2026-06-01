@@ -92,6 +92,7 @@ Options for <url>:
   --concurrency <n>    Max concurrent workers (default 10).
   --auto-approve       Automatically approve results as new baselines.
   --mask <selectors>   Comma-separated CSS selectors to hide (e.g. ".ad,#popup").
+  --skip-summaries     Skip waiting for parallel AI summaries in the CLI.
 
 Environment Variables:
   REGRESSIONBOT_API_KEY   Override the API Key.
@@ -154,8 +155,9 @@ Waiting for completion...
 
     const result = await job.waitForCompletion(2000, (status: JobStatus) => {
         const progress = status.progress || { percent: '0' };
-        process.stdout.write(`\r   Status: ${status.status} (${progress.percent}%)`);
-    });
+        const aiStatusDetail = status.summaryStatus && status.summaryStatus !== 'NONE' ? ` [AI Summary: ${status.summaryStatus}]` : '';
+        process.stdout.write(`\r   Status: ${status.status} (${progress.percent}%)${aiStatusDetail}`);
+    }, { waitForSummaries: !options['skip-summaries'] });
 
     console.log('\n\n✅ Job Completed.');
     

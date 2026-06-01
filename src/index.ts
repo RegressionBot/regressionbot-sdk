@@ -265,12 +265,21 @@ export class JobHandle {
 
     public async waitForCompletion(
         intervalMs: number = 2000, 
-        callback?: (status: JobStatus) => void
+        callback?: (status: JobStatus) => void,
+        options?: { waitForSummaries?: boolean }
     ): Promise<JobStatus> {
         while (true) {
             const status = await this.getStatus();
             if (callback) callback(status);
-            if (status.status === 'COMPLETED' || status.status === 'APPROVED') return status;
+            if (status.status === 'COMPLETED' || status.status === 'APPROVED') {
+                if (options?.waitForSummaries) {
+                    if (status.summaryStatus === 'COMPLETE' || status.summaryStatus === 'NONE') {
+                        return status;
+                    }
+                } else {
+                    return status;
+                }
+            }
             if (status.status === 'FAILED') throw new Error(`Job Failed: ${status.error}`);
             await new Promise(resolve => setTimeout(resolve, intervalMs));
         }
