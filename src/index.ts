@@ -1,3 +1,8 @@
+import type { ReadableStream } from 'stream/web';
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import * as fs from 'fs';
+import * as path from 'path';
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobProgress, PageResult } from './types';
 import {
     sanitizeFilename,
@@ -210,8 +215,6 @@ export class JobHandle {
         baseDir?: string 
     } = {}): Promise<void> {
         const summary = await this.getSummary();
-        const fs = require('fs');
-        const path = require('path');
         const baseDir = options.baseDir || path.join(process.cwd(), 'regressions');
         const safeJobId = sanitizeFilename(this.jobId);
         const jobDir = path.join(baseDir, safeJobId);
@@ -231,9 +234,25 @@ export class JobHandle {
                     return;
                 }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
+                if (!res.body) {
+                    throw new Error('Response body is missing');
+                }
+
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+
+                try {
+                    await pipeline(
+                        Readable.fromWeb(res.body as ReadableStream),
+                        fileStream
+                    );
+                } catch (streamErr) {
+                    fileStream.close();
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                    throw streamErr;
+                }
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
