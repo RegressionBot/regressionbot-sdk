@@ -190,34 +190,11 @@ export class JobHandle {
     }
 
     public async getStatus(): Promise<JobStatus> {
-        const status = await this.sdk._request<JobStatus>(`/job/${encodeURIComponent(this.jobId)}`);
-        if (status.results) {
-            status.results.forEach(r => {
-                if (r.regressionbotSummary) {
-                    r.aiSummary = r.regressionbotSummary;
-                }
-            });
-        }
-        return status;
+        return this.sdk._request<JobStatus>(`/job/${encodeURIComponent(this.jobId)}`);
     }
 
     public async getSummary(): Promise<JobSummary> {
-        const summary = await this.sdk._request<JobSummary>(`/job/${encodeURIComponent(this.jobId)}/summary`);
-        if (summary.regressions) {
-            summary.regressions.forEach(r => {
-                if (r.regressionbotSummary) {
-                    r.aiSummary = r.regressionbotSummary;
-                }
-            });
-        }
-        if (summary.matches) {
-            summary.matches.forEach(m => {
-                if (m.regressionbotSummary) {
-                    m.aiSummary = m.regressionbotSummary;
-                }
-            });
-        }
-        return summary;
+        return this.sdk._request<JobSummary>(`/job/${encodeURIComponent(this.jobId)}/summary`);
     }
 
     public async approve(): Promise<{ message: string; jobId: string; approvedUrlsCount: number; failedCount?: number }> {
