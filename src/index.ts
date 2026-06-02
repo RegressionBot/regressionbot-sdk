@@ -1,3 +1,6 @@
+import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
+import type { ReadableStream } from 'stream/web';
 import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobProgress, PageResult } from './types';
 import {
     sanitizeFilename,
@@ -230,10 +233,25 @@ export class JobHandle {
                     console.warn(`Warning: Failed to download ${name} from ${url} (Status: ${res.status})`);
                     return;
                 }
+                if (!res.body) {
+                    console.warn(`Warning: Failed to download ${name} from ${url} (Empty body)`);
+                    return;
+                }
                 
-                const buffer = Buffer.from(await res.arrayBuffer());
                 const filePath = path.join(jobDir, name);
-                fs.writeFileSync(filePath, buffer);
+                const fileStream = fs.createWriteStream(filePath);
+                try {
+                    await pipeline(
+                        Readable.fromWeb(res.body as ReadableStream),
+                        fileStream
+                    );
+                } catch (streamErr: any) {
+                    fileStream.close();
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                    throw streamErr;
+                }
             } catch (err: any) {
                 console.warn(`Warning: Failed to download ${name}: ${err.message}`);
             }
