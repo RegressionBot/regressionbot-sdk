@@ -11,7 +11,7 @@ import {
 export { sanitizeFilename, sanitizeUrlToPath, Viewports };
 export type { PageResult, JobProgress, JobStatus, JobSummary, Viewport, VRConfig };
 
-export class Visual {
+export class RegressionBot {
     private apiKey: string;
     private apiUrl: string;
 
@@ -69,7 +69,7 @@ export class Visual {
 }
 
 export class JobBuilder {
-    private sdk: Visual;
+    private sdk: RegressionBot;
     private manifest: {
         testOrigin: string;
         sitemapUrl?: string;
@@ -81,7 +81,7 @@ export class JobBuilder {
         concurrency: number;
     };
 
-    constructor(sdk: Visual, testOrigin: string) {
+    constructor(sdk: RegressionBot, testOrigin: string) {
         validateProtocol(testOrigin, 'testOrigin');
         this.sdk = sdk;
         this.manifest = {
@@ -181,10 +181,10 @@ export class JobBuilder {
 }
 
 export class JobHandle {
-    private sdk: Visual;
+    private sdk: RegressionBot;
     public jobId: string;
 
-    constructor(sdk: Visual, jobId: string) {
+    constructor(sdk: RegressionBot, jobId: string) {
         this.sdk = sdk;
         this.jobId = jobId;
     }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Visual } from './index';
+import { RegressionBot } from './index';
 import { sanitizeFilename } from './security';
 import { JobStatus } from './types';
 import * as path from 'path';
@@ -37,7 +37,7 @@ const argv = parseArgs(process.argv.slice(2));
 const command = argv._[0];
 const param = argv._[1];
 
-const sdk = new Visual();
+const sdk = new RegressionBot();
 
 async function main() {
     if (!command || command === 'help' || command === '--help' || command === '-h') {

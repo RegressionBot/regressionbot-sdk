@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { Visual } = require('../dist/index');
+const { RegressionBot } = require('../dist/index');
 
 // Mock fetch for testing
 const originalFetch = global.fetch;
@@ -17,7 +17,7 @@ function restoreFetch() {
 
 // Helper to create SDK with mock API
 function createMockSdk() {
-    const sdk = new Visual('test-api-key', 'http://localhost:9999');
+    const sdk = new RegressionBot('test-api-key', 'http://localhost:9999');
     return sdk;
 }
 

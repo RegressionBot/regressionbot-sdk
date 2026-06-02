@@ -22,11 +22,11 @@ npm install regressionbot
 ### Basic Example
 
 ```typescript
-import { Visual } from 'regressionbot';
+import { RegressionBot } from 'regressionbot';
 
-const visual = new Visual();
+const rb = new RegressionBot();
 
-const job = await visual
+const job = await rb
   .test('https://preview.myapp.com')
   .forProject('my-app-web')
   .run();
@@ -44,11 +44,11 @@ await job.downloadResults({ full: true });
 ### Full Matrix Example
 
 ```typescript
-import { Visual } from 'regressionbot';
+import { RegressionBot } from 'regressionbot';
 
-const visual = new Visual(process.env.API_KEY);
+const rb = new RegressionBot(process.env.API_KEY);
 
-const job = await visual
+const job = await rb
   .test(process.env.VERCEL_PREVIEW_URL)   // The Candidate (Test Origin)
   .against('https://production-app.com')    // The Source of Truth (Base Origin)
   .forProject('marketing-site-v2')          // Context: Links to Baselines & History
@@ -153,11 +153,11 @@ npx regressionbot approve <jobId>
 
 ### Basic Example
 ```typescript
-import { Visual } from 'regressionbot';
+import { RegressionBot } from 'regressionbot';
 
-const visual = new Visual();
+const rb = new RegressionBot();
 
-const job = await visual
+const job = await rb
   .test('https://preview.myapp.com')
   .forProject('my-app-web')
   .run();

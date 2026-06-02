@@ -1,9 +1,9 @@
-const { Visual } = require('regressionbot'); // Using the package name
+const { RegressionBot } = require('regressionbot'); // Using the package name
 
 async function runDemo() {
     // We recommend using the REGRESSIONBOT_API_KEY environment variable,
     // but you can also pass it explicitly to the constructor.
-    const sdk = new Visual(process.env.REGRESSIONBOT_API_KEY || 'YOUR_API_KEY');
+    const sdk = new RegressionBot(process.env.REGRESSIONBOT_API_KEY || 'YOUR_API_KEY');
 
     // SCENARIO: Testing a dynamic Preview URL against your production "Marketing Site" baselines.
 
