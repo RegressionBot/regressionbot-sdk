@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { Visual } = require('../dist/index');
+const { RegressionBot } = require('../dist/index');
 const http = require('http');
 
 async function testApiIntegration() {
@@ -30,7 +30,7 @@ async function testApiIntegration() {
     server.listen(port);
 
     try {
-        const sdk = new Visual(mockApiKey, `http://localhost:${port}`);
+        const sdk = new RegressionBot(mockApiKey, `http://localhost:${port}`);
         
         // Test POST /crawl
         console.log('  Testing .test().on().against().run()...');
@@ -63,7 +63,7 @@ async function testApiIntegration() {
         const slowPort = 3002;
         slowServer.listen(slowPort);
         
-        const slowSdk = new Visual(mockApiKey, `http://localhost:${slowPort}`);
+        const slowSdk = new RegressionBot(mockApiKey, `http://localhost:${slowPort}`);
         const start = Date.now();
         try {
             await slowSdk._request('/hang');
@@ -86,7 +86,7 @@ async function testApiIntegration() {
         const hangingBodyPort = 3004;
         hangingBodyServer.listen(hangingBodyPort);
 
-        const hangingBodySdk = new Visual(mockApiKey, `http://localhost:${hangingBodyPort}`);
+        const hangingBodySdk = new RegressionBot(mockApiKey, `http://localhost:${hangingBodyPort}`);
         const startHanging = Date.now();
         try {
             await hangingBodySdk._request('/hang-body');
@@ -111,7 +111,7 @@ async function testApiIntegration() {
         const errorPort = 3003;
         errorServer.listen(errorPort);
 
-        const errorSdk = new Visual(mockApiKey, `http://localhost:${errorPort}`);
+        const errorSdk = new RegressionBot(mockApiKey, `http://localhost:${errorPort}`);
         try {
             await errorSdk._request('/error');
             assert.fail('Request should have failed');
