@@ -149,7 +149,45 @@ async function testJobHandleMethods() {
     assert.strictEqual(approveResult.approvedUrlsCount, 5);
     console.log('  OK: approve() works');
     restoreFetch();
-    
+
+    // Test generateAiSummary()
+    console.log('  Testing generateAiSummary()...');
+    setMockFetch(async (url, options) => {
+        assert.strictEqual(url, 'http://localhost:9999/job/test-job-456/ai-summary');
+        assert.strictEqual(options.method, 'POST');
+        return {
+            ok: true,
+            json: async () => ({ 
+                message: 'AI summary generated successfully',
+                jobId: 'test-job-456',
+                summaries: [{ url: 'https://example.com', variantName: 'desktop', regressionbotSummary: 'Header changed color' }]
+            })
+        };
+    });
+    const aiSummary = await job.generateAiSummary();
+    assert.strictEqual(aiSummary.summaries[0].regressionbotSummary, 'Header changed color');
+    console.log('  OK: generateAiSummary() works');
+    restoreFetch();
+
+    // Test getCollage()
+    console.log('  Testing getCollage()...');
+    setMockFetch(async (url) => {
+        assert.strictEqual(url, 'http://localhost:9999/job/test-job-456/collage');
+        return {
+            ok: true,
+            json: async () => ({ 
+                jobId: 'test-job-456',
+                collageKey: 'key-123',
+                collageUrl: 'http://collage.url',
+                regressionCount: 2
+            })
+        };
+    });
+    const collage = await job.getCollage();
+    assert.strictEqual(collage.collageKey, 'key-123');
+    console.log('  OK: getCollage() works');
+    restoreFetch();
+
     console.log('All JobHandle tests passed!\n');
 }
 
@@ -207,10 +245,77 @@ async function testViewports() {
     console.log('All Viewports tests passed!\n');
 }
 
+async function testProjectMethods() {
+    console.log('Testing Project and Admin metrics methods...');
+
+    const sdk = createMockSdk();
+
+    // Test getProject()
+    console.log('  Testing getProject()...');
+    setMockFetch(async (url) => {
+        assert.strictEqual(url, 'http://localhost:9999/project/my-project');
+        return {
+            ok: true,
+            json: async () => ({ name: 'my-project', testOrigin: 'https://example.com' })
+        };
+    });
+    const project = await sdk.getProject('my-project');
+    assert.strictEqual(project.name, 'my-project');
+    console.log('  OK: getProject() works');
+    restoreFetch();
+
+    // Test listProjects()
+    console.log('  Testing listProjects()...');
+    setMockFetch(async (url) => {
+        assert.strictEqual(url, 'http://localhost:9999/projects');
+        return {
+            ok: true,
+            json: async () => ([{ name: 'my-project' }])
+        };
+    });
+    const projectList = await sdk.listProjects();
+    assert.strictEqual(projectList[0].name, 'my-project');
+    console.log('  OK: listProjects() works');
+    restoreFetch();
+
+    // Test runProject()
+    console.log('  Testing runProject()...');
+    setMockFetch(async (url, options) => {
+        assert.strictEqual(url, 'http://localhost:9999/project/my-project/run');
+        assert.strictEqual(options.method, 'POST');
+        assert.deepStrictEqual(JSON.parse(options.body), { autoApprove: true, concurrency: 5 });
+        return {
+            ok: true,
+            json: async () => ({ jobId: 'job-project-123' })
+        };
+    });
+    const job = await sdk.runProject('my-project', { autoApprove: true, concurrency: 5 });
+    assert.strictEqual(job.jobId, 'job-project-123');
+    console.log('  OK: runProject() works');
+    restoreFetch();
+
+    // Test getMetrics()
+    console.log('  Testing getMetrics()...');
+    setMockFetch(async (url) => {
+        assert.strictEqual(url, 'http://localhost:9999/admin/metrics');
+        return {
+            ok: true,
+            json: async () => ({ totalJobs: 42, averageExecutionTime: 15, averagePagesScanned: 5, lastJobs: [] })
+        };
+    });
+    const metrics = await sdk.getMetrics();
+    assert.strictEqual(metrics.totalJobs, 42);
+    console.log('  OK: getMetrics() works');
+    restoreFetch();
+
+    console.log('All Project and Admin metrics tests passed!\n');
+}
+
 async function runAllTests() {
     try {
         await testJobBuilderMethods();
         await testJobHandleMethods();
+        await testProjectMethods();
         await testValidation();
         await testViewports();
         console.log('✅ ALL SDK UNIT TESTS PASSED');

@@ -1,3 +1,34 @@
+export interface ProjectPath {
+    path: string;
+    label?: string;
+}
+
+export interface ProjectScan {
+    pattern: string;
+    options?: {
+        limit?: number;
+        exclude?: string[];
+    };
+}
+
+export interface ProjectConfig {
+    orgId?: string;
+    name: string;
+    testOrigin?: string;
+    baseOrigin?: string;
+    sitemapUrl?: string;
+    paths?: ProjectPath[];
+    scans?: ProjectScan[];
+    devices?: string[];
+    masks?: string[];
+    concurrency?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    lastRunAt?: string;
+    lastJobId?: string;
+    baselineInvalidatedAt?: string;
+}
+
 export interface VRConfig {
     apiKey?: string;
     apiUrl?: string;
@@ -84,3 +115,41 @@ export interface JobSummary {
     errors: Array<{ url: string; variantName: string; errorMessage: string }>;
 }
 
+export interface JobAiSummary {
+    message: string;
+    jobId: string;
+    summaries: Array<{
+        url: string;
+        variantName: string;
+        regressionbotSummary: string;
+    }>;
+}
+
+export interface JobCollage {
+    jobId: string;
+    collageKey: string;
+    collageUrl: string;
+    regressionCount: number;
+}
+
+export interface MetricJobItem {
+    jobId: string;
+    project?: string;
+    status: 'INITIALIZING' | 'PROCESSING' | 'SUMMARIZING' | 'COMPLETED' | 'APPROVED' | 'FAILED';
+    executionTime?: number;
+    totalUrls?: number;
+    completedCount?: number;
+    createdAt?: string;
+    results?: Array<{
+        url: string;
+        variantName: string;
+        diffUrl?: string;
+    }>;
+}
+
+export interface OrganizationMetrics {
+    totalJobs: number;
+    averageExecutionTime: number;
+    averagePagesScanned: number;
+    lastJobs: MetricJobItem[];
+}
