@@ -10,9 +10,7 @@ import {
     ProjectPath,
     ProjectScan,
     JobAiSummary,
-    JobCollage,
-    OrganizationMetrics,
-    MetricJobItem
+    JobCollage
 } from './types';
 import {
     sanitizeFilename,
@@ -35,9 +33,7 @@ export type {
     ProjectPath,
     ProjectScan,
     JobAiSummary,
-    JobCollage,
-    OrganizationMetrics,
-    MetricJobItem
+    JobCollage
 };
 
 export class RegressionBot {
@@ -115,12 +111,6 @@ export class RegressionBot {
         return new JobHandle(this, res.jobId);
     }
 
-    /**
-     * Get organization metrics and job history.
-     */
-    public async getMetrics(): Promise<OrganizationMetrics> {
-        return this._request<OrganizationMetrics>('/admin/metrics');
-    }
 
     // Internal fetch wrapper
     public async _request<T>(path: string, method: string = 'GET', body?: any): Promise<T> {

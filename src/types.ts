@@ -131,25 +131,3 @@ export interface JobCollage {
     collageUrl: string;
     regressionCount: number;
 }
-
-export interface MetricJobItem {
-    jobId: string;
-    project?: string;
-    status: 'INITIALIZING' | 'PROCESSING' | 'SUMMARIZING' | 'COMPLETED' | 'APPROVED' | 'FAILED';
-    executionTime?: number;
-    totalUrls?: number;
-    completedCount?: number;
-    createdAt?: string;
-    results?: Array<{
-        url: string;
-        variantName: string;
-        diffUrl?: string;
-    }>;
-}
-
-export interface OrganizationMetrics {
-    totalJobs: number;
-    averageExecutionTime: number;
-    averagePagesScanned: number;
-    lastJobs: MetricJobItem[];
-}

@@ -246,7 +246,7 @@ async function testViewports() {
 }
 
 async function testProjectMethods() {
-    console.log('Testing Project and Admin metrics methods...');
+    console.log('Testing Project methods...');
 
     const sdk = createMockSdk();
 
@@ -294,21 +294,7 @@ async function testProjectMethods() {
     console.log('  OK: runProject() works');
     restoreFetch();
 
-    // Test getMetrics()
-    console.log('  Testing getMetrics()...');
-    setMockFetch(async (url) => {
-        assert.strictEqual(url, 'http://localhost:9999/admin/metrics');
-        return {
-            ok: true,
-            json: async () => ({ totalJobs: 42, averageExecutionTime: 15, averagePagesScanned: 5, lastJobs: [] })
-        };
-    });
-    const metrics = await sdk.getMetrics();
-    assert.strictEqual(metrics.totalJobs, 42);
-    console.log('  OK: getMetrics() works');
-    restoreFetch();
-
-    console.log('All Project and Admin metrics tests passed!\n');
+    console.log('All Project tests passed!\n');
 }
 
 async function runAllTests() {
