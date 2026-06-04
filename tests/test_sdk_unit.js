@@ -169,25 +169,6 @@ async function testJobHandleMethods() {
     console.log('  OK: generateAiSummary() works');
     restoreFetch();
 
-    // Test getCollage()
-    console.log('  Testing getCollage()...');
-    setMockFetch(async (url) => {
-        assert.strictEqual(url, 'http://localhost:9999/job/test-job-456/collage');
-        return {
-            ok: true,
-            json: async () => ({ 
-                jobId: 'test-job-456',
-                collageKey: 'key-123',
-                collageUrl: 'http://collage.url',
-                regressionCount: 2
-            })
-        };
-    });
-    const collage = await job.getCollage();
-    assert.strictEqual(collage.collageKey, 'key-123');
-    console.log('  OK: getCollage() works');
-    restoreFetch();
-
     console.log('All JobHandle tests passed!\n');
 }
 

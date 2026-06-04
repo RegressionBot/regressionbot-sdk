@@ -125,9 +125,3 @@ export interface JobAiSummary {
     }>;
 }
 
-export interface JobCollage {
-    jobId: string;
-    collageKey: string;
-    collageUrl: string;
-    regressionCount: number;
-}

@@ -9,8 +9,7 @@ import {
     ProjectConfig,
     ProjectPath,
     ProjectScan,
-    JobAiSummary,
-    JobCollage
+    JobAiSummary
 } from './types';
 import {
     sanitizeFilename,
@@ -32,8 +31,7 @@ export type {
     ProjectConfig,
     ProjectPath,
     ProjectScan,
-    JobAiSummary,
-    JobCollage
+    JobAiSummary
 };
 
 export class RegressionBot {
@@ -274,12 +272,6 @@ export class JobHandle {
         return this.sdk._request<JobAiSummary>(`/job/${encodeURIComponent(this.jobId)}/ai-summary`, 'POST');
     }
 
-    /**
-     * Generate and get regression collage.
-     */
-    public async getCollage(): Promise<JobCollage> {
-        return this.sdk._request<JobCollage>(`/job/${encodeURIComponent(this.jobId)}/collage`);
-    }
 
     /**
      * Download images for the job locally.
