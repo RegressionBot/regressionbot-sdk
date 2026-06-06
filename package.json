@@ -5,10 +5,10 @@
   "homepage": "https://regressionbot.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cbestall/regressionbot-sdk.git"
+    "url": "git+https://github.com/RegressionBot/regressionbot-sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/cbestall/regressionbot-sdk/issues"
+    "url": "https://github.com/RegressionBot/regressionbot-sdk/issues"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

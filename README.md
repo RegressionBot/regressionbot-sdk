@@ -9,7 +9,10 @@ RegressionBot is a declarative visual regression testing platform that helps you
 - **Fluent Manifest Builder**: Chainable methods to define your test scope.
 - **Matrix Testing**: Test multiple devices and viewports in a single job.
 - **Auto-Discovery**: Scan sitemaps with glob patterns and limits.
-- **Project-Based Baselines**: Share visual history across different environments (Preview vs Prod).
+- **AI Summaries**: Plain-English change descriptions for every regression, generated on-demand via the API.
+- **Project-Based Baselines**: Save and reuse test configurations; share visual history across environments.
+- **Auto-Approval**: Automatically promote screenshots to baselines on jobs that pass your criteria.
+- **Zero Infrastructure**: No browser maintenance or server provisioning — RegressionBot handles it all.
 
 ## Installation
 
@@ -24,7 +27,7 @@ npm install regressionbot
 ```typescript
 import { RegressionBot } from 'regressionbot';
 
-const rb = new RegressionBot();
+const rb = new RegressionBot(); // uses REGRESSIONBOT_API_KEY env var
 
 const job = await rb
   .test('https://preview.myapp.com')
@@ -80,32 +83,96 @@ const result = await job.waitForCompletion();
 const summary = await job.getSummary();
 
 console.log(`Job ${job.jobId} finished. Overall Score: ${summary.overallScore}`);
+```
 
-// RegressionBot AI Summary
+### AI Summaries
+
+RegressionBot can generate plain-English descriptions of what changed for each regression. Summaries are generated asynchronously after job completion.
+
+```typescript
+// Wait for the job and its AI summaries to both finish
+const status = await job.waitForCompletion(2000, undefined, { waitForSummaries: true });
+const summary = await job.getSummary();
+
 if (summary.regressions.length > 0) {
   console.log(`\n${summary.regressions.length} regressions found:`);
   for (const regression of summary.regressions) {
     if (regression.aiSummary) {
-      console.log(`\n🤖 RegressionBot Summary for ${regression.url}:`);
+      console.log(`\nRegressionBot AI Summary for ${regression.url}:`);
       console.log(`> ${regression.aiSummary}`);
     }
   }
 }
+
+// Or trigger AI summary generation on-demand for a completed job:
+const aiResult = await job.generateAiSummary();
+console.log(`Generated summaries for ${aiResult.processedCount} regressions.`);
+```
+
+### Progress Tracking
+
+Pass a callback to `waitForCompletion` to receive status updates while the job runs:
+
+```typescript
+const status = await job.waitForCompletion(3000, (s) => {
+  console.log(`[${s.status}] ${s.completedCount}/${s.totalCount} pages checked`);
+});
+```
+
+### Auto-Approval
+
+Set `.autoApprove()` to automatically promote screenshots to baselines when the job completes. Useful for scheduled health checks or first-run baseline seeding.
+
+```typescript
+const job = await rb
+  .test('https://production-app.com')
+  .forProject('health-check')
+  .scan('/**', { limit: 50 })
+  .autoApprove()
+  .run();
+```
+
+You can also approve an existing job's results programmatically:
+
+```typescript
+const result = await job.approve();
+console.log(`Approved ${result.approvedUrlsCount} URLs.`);
+```
+
+### Saved Projects
+
+Projects let you save a test configuration in the RegressionBot dashboard and trigger runs against it without re-specifying every option.
+
+```typescript
+// List all saved projects for your organization
+const projects = await rb.listProjects();
+console.log(projects.map(p => p.name));
+
+// Fetch a specific project's configuration
+const project = await rb.getProject('marketing-site-v2');
+console.log(project);
+
+// Trigger a run from a saved project, optionally overriding fields
+const job = await rb.runProject('marketing-site-v2', {
+  testOrigin: process.env.VERCEL_PREVIEW_URL,
+});
+
+const status = await job.waitForCompletion();
+console.log(`Score: ${status.overallScore}/100`);
+```
+
+### Reconnecting to an Existing Job
+
+If you have a job ID from a previous run (e.g., stored in CI state), you can attach to it without re-running the test:
+
+```typescript
+const job = rb.job('job_abc123');
+const summary = await job.getSummary();
 ```
 
 ## CLI Usage
 
 The `regressionbot` CLI is the easiest way to interact with the [RegressionBot API](https://regressionbot.com) from your terminal or CI scripts.
-
-## Examples & Integrations
-
-Check out the [examples/](./examples/) directory for real-world integration guides:
-- [GitHub Actions](./examples/actions/regressionbot/): Self-contained composite action for CI.
-- [Preview vs Production](./examples/workflows/workflow-preview-vs-prod.yml): Compare staging URLs to live sites.
-- [AWS Amplify](./examples/workflows/platform-amplify.yml): Wait for builds and test dynamically.
-- [Scheduled Health Checks](./examples/workflows/daily-health-check.yml): Monitor production visuals daily.
-
-Visit [RegressionBot.com](https://regressionbot.com) for more documentation, pricing, and to create your account.
 
 ### Authentication
 
@@ -127,7 +194,7 @@ Test an entire site using glob patterns.
 npx regressionbot https://example.com --scan "/**" --exclude "/admin/**" --concurrency 20
 ```
 
-### Job Summary
+#### 3. Job Summary
 Get detailed results and diff URLs for a completed job.
 ```bash
 npx regressionbot summary <jobId>
@@ -149,42 +216,16 @@ Promote the current screenshots of a job to be the new baselines.
 npx regressionbot approve <jobId>
 ```
 
-## SDK Usage (Fluent API)
+## Examples & Integrations
 
-### Basic Example
-```typescript
-import { RegressionBot } from 'regressionbot';
+Check out the [examples/](./examples/) directory for real-world integration guides:
+- [GitHub Actions](./examples/actions/regressionbot/): Self-contained composite action for CI.
+- [Preview vs Production](./examples/workflows/workflow-preview-vs-prod.yml): Compare staging URLs to live sites.
+- [AWS Amplify](./examples/workflows/platform-amplify.yml): Wait for builds and test dynamically.
+- [Scheduled Health Checks](./examples/workflows/daily-health-check.yml): Monitor production visuals daily.
 
-const rb = new RegressionBot();
-
-const job = await rb
-  .test('https://preview.myapp.com')
-  .forProject('my-app-web')
-  .run();
-
-const status = await job.waitForCompletion();
-console.log(`Stability Score: ${status.overallScore}/100`);
-
-// Get detailed summary
-const summary = await job.getSummary();
-console.log(`Regressions: ${summary.regressionCount}`);
-
-// Download only diff images
-await job.downloadResults();
-
-// Download all images (baseline, current, diff)
-await job.downloadResults({ full: true });
-```
-
-## Development
-
-### Versioning
-
-```bash
-npm version patch # or minor/major
-npm publish
-```
+Visit [RegressionBot.com](https://regressionbot.com) for more documentation, pricing, and to create your account.
 
 ---
 
-Made with ❤️ by [RegressionBot](https://regressionbot.com). Report issues on [GitHub](https://github.com/cbestall/regressionbot-sdk/issues).
+Made with ❤️ by [RegressionBot](https://regressionbot.com). Report issues on [GitHub](https://github.com/RegressionBot/regressionbot-sdk/issues).
