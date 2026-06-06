@@ -1,4 +1,16 @@
-import { VRConfig, Viewport, Viewports, JobStatus, JobSummary, JobProgress, PageResult } from './types';
+import {
+    VRConfig,
+    Viewport,
+    Viewports,
+    JobStatus,
+    JobSummary,
+    JobProgress,
+    PageResult,
+    ProjectConfig,
+    ProjectPath,
+    ProjectScan,
+    JobAiSummary
+} from './types';
 import {
     sanitizeFilename,
     sanitizeUrlToPath,
@@ -9,7 +21,18 @@ import {
 } from './security';
 
 export { sanitizeFilename, sanitizeUrlToPath, Viewports };
-export type { PageResult, JobProgress, JobStatus, JobSummary, Viewport, VRConfig };
+export type {
+    PageResult,
+    JobProgress,
+    JobStatus,
+    JobSummary,
+    Viewport,
+    VRConfig,
+    ProjectConfig,
+    ProjectPath,
+    ProjectScan,
+    JobAiSummary
+};
 
 export class RegressionBot {
     private apiKey: string;
@@ -45,6 +68,47 @@ export class RegressionBot {
     public job(jobId: string): JobHandle {
         return new JobHandle(this, jobId);
     }
+
+    /**
+     * Get configuration details for a saved project.
+     */
+    public async getProject(projectName: string): Promise<ProjectConfig> {
+        return this._request(`/project/${encodeURIComponent(projectName)}`);
+    }
+
+    /**
+     * List all saved projects for the authenticated organization.
+     */
+    public async listProjects(): Promise<ProjectConfig[]> {
+        return this._request<ProjectConfig[]>('/projects');
+    }
+
+    /**
+     * Trigger a new job run using a saved project configuration.
+     */
+    public async runProject(
+        projectName: string,
+        options: {
+            testOrigin?: string;
+            url?: string;
+            sitemapUrl?: string;
+            baseOrigin?: string;
+            devices?: string[];
+            paths?: Array<{ path: string; label?: string }>;
+            scans?: Array<{ pattern: string; options?: any }>;
+            masks?: string[];
+            concurrency?: number;
+            autoApprove?: boolean;
+        } = {}
+    ): Promise<JobHandle> {
+        const res = await this._request<{ jobId: string }>(
+            `/project/${encodeURIComponent(projectName)}/run`,
+            'POST',
+            options
+        );
+        return new JobHandle(this, res.jobId);
+    }
+
 
     // Internal fetch wrapper
     public async _request<T>(path: string, method: string = 'GET', body?: any): Promise<T> {
@@ -202,6 +266,14 @@ export class JobHandle {
     }
 
     /**
+     * Generate AI summaries on-demand for all regressions in a completed job.
+     */
+    public async generateAiSummary(): Promise<JobAiSummary> {
+        return this.sdk._request<JobAiSummary>(`/job/${encodeURIComponent(this.jobId)}/ai-summary`, 'POST');
+    }
+
+
+    /**
      * Download images for the job locally.
      * @param options Download options.
      */
@@ -263,8 +335,14 @@ export class JobHandle {
         }
     }
 
+    /**
+     * Poll until the job reaches a terminal state (COMPLETED, APPROVED, or FAILED).
+     * @param intervalMs Polling interval in milliseconds. Defaults to 2000.
+     * @param callback Optional callback invoked on each status poll.
+     * @param options.waitForSummaries If true, keeps polling until AI summaries are fully populated before returning.
+     */
     public async waitForCompletion(
-        intervalMs: number = 2000, 
+        intervalMs: number = 2000,
         callback?: (status: JobStatus) => void,
         options?: { waitForSummaries?: boolean }
     ): Promise<JobStatus> {

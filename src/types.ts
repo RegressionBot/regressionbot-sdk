@@ -1,3 +1,34 @@
+export interface ProjectPath {
+    path: string;
+    label?: string;
+}
+
+export interface ProjectScan {
+    pattern: string;
+    options?: {
+        limit?: number;
+        exclude?: string[];
+    };
+}
+
+export interface ProjectConfig {
+    orgId?: string;
+    name: string;
+    testOrigin?: string;
+    baseOrigin?: string;
+    sitemapUrl?: string;
+    paths?: ProjectPath[];
+    scans?: ProjectScan[];
+    devices?: string[];
+    masks?: string[];
+    concurrency?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    lastRunAt?: string;
+    lastJobId?: string;
+    baselineInvalidatedAt?: string;
+}
+
 export interface VRConfig {
     apiKey?: string;
     apiUrl?: string;
@@ -82,5 +113,15 @@ export interface JobSummary {
     newBaselines: Array<{ url: string; variantName: string }>;
     /** Pages that failed to capture or compare. */
     errors: Array<{ url: string; variantName: string; errorMessage: string }>;
+}
+
+export interface JobAiSummary {
+    message: string;
+    jobId: string;
+    summaries: Array<{
+        url: string;
+        variantName: string;
+        regressionbotSummary: string;
+    }>;
 }
 
