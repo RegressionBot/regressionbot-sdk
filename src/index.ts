@@ -114,6 +114,7 @@ export class RegressionBot {
     public async _request<T>(path: string, method: string = 'GET', body?: any): Promise<T> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
             'x-api-key': this.apiKey
         };
 

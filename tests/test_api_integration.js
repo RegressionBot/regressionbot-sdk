@@ -8,6 +8,7 @@ async function testApiIntegration() {
     const mockApiKey = 'test-api-key';
     const server = http.createServer((req, res) => {
         // Verify headers
+        assert.strictEqual(req.headers['authorization'], `Bearer ${mockApiKey}`);
         assert.strictEqual(req.headers['x-api-key'], mockApiKey);
         assert.strictEqual(req.headers['content-type'], 'application/json');
 
