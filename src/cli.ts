@@ -155,7 +155,7 @@ Waiting for completion...
 
     const result = await job.waitForCompletion(2000, (status: JobStatus) => {
         const progress = status.progress || { percent: '0' };
-        const aiStatusDetail = status.summaryStatus && status.summaryStatus !== 'NONE' ? ` [AI Summary: ${status.summaryStatus}]` : '';
+        const aiStatusDetail = status.summaryStatus && status.summaryStatus !== 'NONE' ? ` [RegressionBot Summary: ${status.summaryStatus}]` : '';
         process.stdout.write(`\r   Status: ${status.status} (${progress.percent}%)${aiStatusDetail}`);
     }, { waitForSummaries: !options['skip-summaries'] });
 

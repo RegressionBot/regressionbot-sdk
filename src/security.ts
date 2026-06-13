@@ -102,10 +102,12 @@ export async function fetchWithTimeout(
         ? AbortSignal.any([options.signal, timeoutSignal])
         : timeoutSignal;
 
-    return await fetch(url, {
+    const response = await fetch(url, {
         ...options,
         signal: combinedSignal,
         // 🛡️ SECURITY: Prevent cross-origin credential leakage via redirects
         redirect: options.redirect || 'error'
     });
+    (response as any)._signal = combinedSignal;
+    return response;
 }
