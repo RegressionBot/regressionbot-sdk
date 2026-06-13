@@ -4,12 +4,21 @@ The official SDK for [RegressionBot.com](https://regressionbot.com) — the simp
 
 RegressionBot is a declarative visual regression testing platform that helps you catch UI changes before they reach production. This SDK provides a fluent, chainable API to define your test scope, run visual tests, and manage baselines programmatically.
 
+## Why RegressionBot?
+
+Unlike traditional visual diffing libraries, RegressionBot is designed for modern, automated development loops and agentic pipelines:
+
+- **Highly Accurate Regressions (Zero Noise)**: Leveraging advanced pixel-matching algorithms and element masking (using CSS selectors or the automatic `data-vr-mask` attribute), RegressionBot eliminates false positives caused by dynamic data, layout shifting, or third-party widgets.
+- **Plain-English Summaries**: No more manual screenshot comparisons. RegressionBot translates visual diffs into concise, plain-English descriptions of what changed, so you know exactly what was modified at a glance.
+- **Agentic Workflow Ready**: Built from the ground up to support autonomous coding agents (like Gemini or Claude) and automated developer loops. Through standard API endpoints, CLI commands, and Model Context Protocol (MCP) integrations, agents can trigger tests, read plain-English results, and approve baseline changes programmatically without human intervention.
+
+
 ## Features
 
 - **Fluent Manifest Builder**: Chainable methods to define your test scope.
 - **Matrix Testing**: Test multiple devices and viewports in a single job.
 - **Auto-Discovery**: Scan sitemaps with glob patterns and limits.
-- **AI Summaries**: Plain-English change descriptions for every regression, generated on-demand via the API.
+- **RegressionBot Summaries**: Plain-English change descriptions for every regression, generated on-demand via the API.
 - **Project-Based Baselines**: Save and reuse test configurations; share visual history across environments.
 - **Auto-Approval**: Automatically promote screenshots to baselines on jobs that pass your criteria.
 - **Zero Infrastructure**: No browser maintenance or server provisioning — RegressionBot handles it all.
@@ -85,26 +94,26 @@ const summary = await job.getSummary();
 console.log(`Job ${job.jobId} finished. Overall Score: ${summary.overallScore}`);
 ```
 
-### AI Summaries
+### RegressionBot Summaries
 
 RegressionBot can generate plain-English descriptions of what changed for each regression. Summaries are generated asynchronously after job completion.
 
 ```typescript
-// Wait for the job and its AI summaries to both finish
+// Wait for the job and its RegressionBot summaries to both finish
 const status = await job.waitForCompletion(2000, undefined, { waitForSummaries: true });
 const summary = await job.getSummary();
 
 if (summary.regressions.length > 0) {
   console.log(`\n${summary.regressions.length} regressions found:`);
   for (const regression of summary.regressions) {
-    if (regression.aiSummary) {
-      console.log(`\nRegressionBot AI Summary for ${regression.url}:`);
-      console.log(`> ${regression.aiSummary}`);
+    if (regression.regressionbotSummary) {
+      console.log(`\nRegressionBot Summary for ${regression.url}:`);
+      console.log(`> ${regression.regressionbotSummary}`);
     }
   }
 }
 
-// Or trigger AI summary generation on-demand for a completed job:
+// Or trigger RegressionBot summary generation on-demand for a completed job:
 const aiResult = await job.generateAiSummary();
 console.log(`Generated summaries for ${aiResult.processedCount} regressions.`);
 ```

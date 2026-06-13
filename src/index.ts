@@ -352,7 +352,7 @@ export class JobHandle {
             if (callback) callback(status);
             if (status.status === 'COMPLETED' || status.status === 'APPROVED') {
                 if (options?.waitForSummaries) {
-                    if (status.summaryStatus === 'COMPLETE' || status.summaryStatus === 'NONE') {
+                    if (status.summaryStatus !== 'PENDING' && status.summaryStatus !== 'PROCESSING') {
                         return status;
                     }
                 } else {
