@@ -29,7 +29,7 @@ Alternatively, you can use our composite action located in `actions/regressionbo
 ### Usage
 
 ```yaml
-- uses: regressionbot/actions/regressionbot@v1
+- uses: ./.github/actions/regressionbot
   with:
     # Commands: 'check', 'approve', 'status'
     command: 'check' 

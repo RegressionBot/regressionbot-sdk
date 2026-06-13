@@ -44,7 +44,8 @@ const job = await rb
   .run();
 
 const status = await job.waitForCompletion();
-console.log(`Stability Score: ${status.overallScore}/100`);
+const summary = await job.getSummary();
+console.log(`Stability Score: ${summary.overallScore}/100`);
 
 // Download only diff images
 await job.downloadResults();
@@ -115,7 +116,7 @@ if (summary.regressions.length > 0) {
 
 // Or trigger RegressionBot summary generation on-demand for a completed job:
 const aiResult = await job.generateAiSummary();
-console.log(`Generated summaries for ${aiResult.processedCount} regressions.`);
+console.log(`Generated summaries for ${aiResult.summaries.length} regressions.`);
 ```
 
 ### Progress Tracking
@@ -124,7 +125,7 @@ Pass a callback to `waitForCompletion` to receive status updates while the job r
 
 ```typescript
 const status = await job.waitForCompletion(3000, (s) => {
-  console.log(`[${s.status}] ${s.completedCount}/${s.totalCount} pages checked`);
+  console.log(`[${s.status}] ${s.progress?.completed}/${s.progress?.total} pages checked`);
 });
 ```
 
@@ -167,7 +168,8 @@ const job = await rb.runProject('marketing-site-v2', {
 });
 
 const status = await job.waitForCompletion();
-console.log(`Score: ${status.overallScore}/100`);
+const summary = await job.getSummary();
+console.log(`Score: ${summary.overallScore}/100`);
 ```
 
 ### Reconnecting to an Existing Job
@@ -200,7 +202,7 @@ npx regressionbot https://example.com --project my-site --on "Desktop Chrome, iP
 #### 2. Sitemap Scan
 Test an entire site using glob patterns.
 ```bash
-npx regressionbot https://example.com --scan "/**" --exclude "/admin/**" --concurrency 20
+npx regressionbot https://example.com --project my-project --scan "/**" --exclude "/admin/**" --concurrency 20
 ```
 
 #### 3. Job Summary

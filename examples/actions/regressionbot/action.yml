@@ -40,7 +40,10 @@ runs:
         REGRESSIONBOT_API_KEY: ${{ inputs.api-key }}
       run: |
         if [ "${{ inputs.command }}" == "check" ]; then
-          CMD="npx regressionbot@latest ${{ inputs.test-origin }} --project ${{ inputs.project }} --on \"${{ inputs.devices }}\""
+          CMD="npx regressionbot@latest ${{ inputs.test-origin }} --on \"${{ inputs.devices }}\""
+          if [ ! -z "${{ inputs.project }}" ]; then
+            CMD="$CMD --project ${{ inputs.project }}"
+          fi
           if [ ! -z "${{ inputs.base-origin }}" ]; then
             CMD="$CMD --against ${{ inputs.base-origin }}"
           fi
