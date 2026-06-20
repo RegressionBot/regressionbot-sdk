@@ -172,6 +172,120 @@ async function testJobHandleMethods() {
     console.log('All JobHandle tests passed!\n');
 }
 
+async function testDownloadResults() {
+    console.log('Testing downloadResults extension resolution...');
+    
+    const fs = require('fs');
+    const path = require('path');
+    
+    const sdk = createMockSdk();
+    const job = sdk.job('test-job-download');
+    
+    // Set up mock fetches
+    setMockFetch(async (url) => {
+        if (url === 'http://localhost:9999/job/test-job-download/summary') {
+            return {
+                ok: true,
+                json: async () => ({
+                    jobId: 'test-job-download',
+                    status: 'COMPLETED',
+                    totalUrls: 1,
+                    completedCount: 1,
+                    overallScore: 90,
+                    executionTime: 10,
+                    regressionCount: 1,
+                    matchCount: 0,
+                    newBaselineCount: 0,
+                    errorCount: 0,
+                    regressions: [
+                        {
+                            url: 'https://example.com/login',
+                            variantName: 'desktop_chrome',
+                            diffPercentage: 5.2,
+                            diffCount: 1000,
+                            visualMatchScore: 94.8,
+                            diffUrl: 'http://localhost:9999/images/diff-url',
+                            baselineUrl: 'http://localhost:9999/images/baseline-url',
+                            currentUrl: 'http://localhost:9999/images/current-url'
+                        }
+                    ],
+                    matches: [],
+                    newBaselines: [],
+                    errors: []
+                })
+            };
+        }
+        
+        if (url === 'http://localhost:9999/images/diff-url') {
+            return {
+                ok: true,
+                status: 200,
+                headers: {
+                    get: (name) => name.toLowerCase() === 'content-type' ? 'image/jpeg' : null
+                },
+                arrayBuffer: async () => new ArrayBuffer(4)
+            };
+        }
+
+        if (url === 'http://localhost:9999/images/baseline-url') {
+            return {
+                ok: true,
+                status: 200,
+                headers: {
+                    get: (name) => name.toLowerCase() === 'content-type' ? 'image/png' : null
+                },
+                arrayBuffer: async () => new ArrayBuffer(4)
+            };
+        }
+
+        if (url === 'http://localhost:9999/images/current-url') {
+            return {
+                ok: true,
+                status: 200,
+                headers: {
+                    get: (name) => name.toLowerCase() === 'content-type' ? 'image/gif' : null
+                },
+                arrayBuffer: async () => new ArrayBuffer(4)
+            };
+        }
+
+        throw new Error(`Unexpected mock URL: ${url}`);
+    });
+
+    const testDir = path.join(__dirname, 'temp_test_downloads');
+    if (fs.existsSync(testDir)) {
+        fs.rmSync(testDir, { recursive: true, force: true });
+    }
+
+    try {
+        await job.downloadResults({
+            full: true,
+            baseDir: testDir
+        });
+
+        // The job folder under baseDir should be 'test_job_download' (sanitized test-job-download)
+        const jobFolder = path.join(testDir, 'test_job_download');
+        assert.ok(fs.existsSync(jobFolder), 'Job folder should exist');
+
+        const diffFile = path.join(jobFolder, 'login_diff_desktop_chrome.jpg');
+        const baselineFile = path.join(jobFolder, 'login_baseline_desktop_chrome.png');
+        const currentFile = path.join(jobFolder, 'login_current_desktop_chrome.gif');
+
+        assert.ok(fs.existsSync(diffFile), 'Diff file should be saved as .jpg');
+        assert.ok(fs.existsSync(baselineFile), 'Baseline file should be saved as .png');
+        assert.ok(fs.existsSync(currentFile), 'Current file should be saved as .gif');
+
+        console.log('  OK: Diffs/images resolved to correct extensions (.jpg, .png, .gif)');
+    } finally {
+        restoreFetch();
+        if (fs.existsSync(testDir)) {
+            fs.rmSync(testDir, { recursive: true, force: true });
+        }
+    }
+    
+    console.log('All downloadResults tests passed!\n');
+}
+
 async function testValidation() {
     console.log('Testing validation...');
     
@@ -282,6 +396,7 @@ async function runAllTests() {
     try {
         await testJobBuilderMethods();
         await testJobHandleMethods();
+        await testDownloadResults();
         await testProjectMethods();
         await testValidation();
         await testViewports();
