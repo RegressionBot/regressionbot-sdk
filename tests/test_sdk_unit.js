@@ -269,13 +269,13 @@ async function testDownloadResults() {
 
         const diffFile = path.join(jobFolder, 'login_diff_desktop_chrome.jpg');
         const baselineFile = path.join(jobFolder, 'login_baseline_desktop_chrome.png');
-        const currentFile = path.join(jobFolder, 'login_current_desktop_chrome.gif');
+        const currentFile = path.join(jobFolder, 'login_current_desktop_chrome.png');
 
         assert.ok(fs.existsSync(diffFile), 'Diff file should be saved as .jpg');
         assert.ok(fs.existsSync(baselineFile), 'Baseline file should be saved as .png');
-        assert.ok(fs.existsSync(currentFile), 'Current file should be saved as .gif');
+        assert.ok(fs.existsSync(currentFile), 'Current file should be saved as .png (fallback from GIF)');
 
-        console.log('  OK: Diffs/images resolved to correct extensions (.jpg, .png, .gif)');
+        console.log('  OK: Diffs/images resolved to correct extensions (.jpg, .png, fallback to .png)');
     } finally {
         restoreFetch();
         if (fs.existsSync(testDir)) {

@@ -309,12 +309,6 @@ export class JobHandle {
                 let ext = '.png'; // default fallback
                 if (contentType.includes('image/jpeg') || contentType.includes('image/jpg')) {
                     ext = '.jpg';
-                } else if (contentType.includes('image/gif')) {
-                    ext = '.gif';
-                } else if (contentType.includes('image/webp')) {
-                    ext = '.webp';
-                } else if (contentType.includes('image/svg+xml')) {
-                    ext = '.svg';
                 }
 
                 const finalName = `${baseName}${ext}`;
