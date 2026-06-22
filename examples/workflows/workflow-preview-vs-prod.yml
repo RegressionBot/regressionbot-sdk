@@ -28,7 +28,7 @@ jobs:
           # 2. Replace the 'against' URL with your production site.
           # 3. Use a consistent 'project' name to track visual history.
           
-          npx regressionbot@latest https://preview-${{ github.event.pull_request.number }}.your-site.com \
+          npx @regressionbot/sdk@latest https://preview-${{ github.event.pull_request.number }}.your-site.com \
             --project "marketing-website" \
             --against https://www.your-site.com \
             --on "Desktop Chrome, Mobile Safari" \

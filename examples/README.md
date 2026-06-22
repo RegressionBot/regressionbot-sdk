@@ -17,7 +17,7 @@ steps:
     env:
       REGRESSIONBOT_API_KEY: ${{ secrets.REGRESSIONBOT_API_KEY }}
     run: |
-      npx regressionbot@latest https://preview-url.com \
+      npx @regressionbot/sdk@latest https://preview-url.com \
         --project "my-project" \
         --on "Desktop Chrome"
 ```
@@ -87,7 +87,7 @@ We provide robust workflow patterns to suit different visual regression strategi
 ### Option 1: Using the NPM Module (Direct)
 
 1.  Copy desired workflows from `examples/workflows/*.yml` to `.github/workflows/`.
-2.  Update the workflow steps to use `npx regressionbot` as shown above.
+2.  Update the workflow steps to use `npx @regressionbot/sdk` as shown above.
 3.  Add `REGRESSIONBOT_API_KEY` to your repository secrets.
 
 ### Option 2: Using the Composite Action
