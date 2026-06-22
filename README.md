@@ -26,7 +26,7 @@ Unlike traditional visual diffing libraries, RegressionBot is designed for moder
 ## Installation
 
 ```bash
-npm install regressionbot
+npm install @regressionbot/sdk
 ```
 
 ## Usage
@@ -34,7 +34,7 @@ npm install regressionbot
 ### Basic Example
 
 ```typescript
-import { RegressionBot } from 'regressionbot';
+import { RegressionBot } from '@regressionbot/sdk';
 
 const rb = new RegressionBot(); // uses REGRESSIONBOT_API_KEY env var
 
@@ -57,7 +57,7 @@ await job.downloadResults({ full: true });
 ### Full Matrix Example
 
 ```typescript
-import { RegressionBot } from 'regressionbot';
+import { RegressionBot } from '@regressionbot/sdk';
 
 const rb = new RegressionBot(process.env.API_KEY);
 
@@ -196,35 +196,35 @@ The CLI looks for the following environment variables:
 #### 1. Quick Check
 Test a single URL against its established baseline.
 ```bash
-npx regressionbot https://example.com --project my-site --on "Desktop Chrome, iPhone 12"
+npx @regressionbot/sdk https://example.com --project my-site --on "Desktop Chrome, iPhone 12"
 ```
 
 #### 2. Sitemap Scan
 Test an entire site using glob patterns.
 ```bash
-npx regressionbot https://example.com --project my-project --scan "/**" --exclude "/admin/**" --concurrency 20
+npx @regressionbot/sdk https://example.com --project my-project --scan "/**" --exclude "/admin/**" --concurrency 20
 ```
 
 #### 3. Job Summary
 Get detailed results and diff URLs for a completed job.
 ```bash
-npx regressionbot summary <jobId>
+npx @regressionbot/sdk summary <jobId>
 ```
 
 Add the `--download` flag to save the diff images locally:
 ```bash
-npx regressionbot summary <jobId> --download
+npx @regressionbot/sdk summary <jobId> --download
 ```
 
 Use the `--download-full` flag to save baseline, current, and diff images:
 ```bash
-npx regressionbot summary <jobId> --download-full
+npx @regressionbot/sdk summary <jobId> --download-full
 ```
 
 #### 4. Approve Changes
 Promote the current screenshots of a job to be the new baselines.
 ```bash
-npx regressionbot approve <jobId>
+npx @regressionbot/sdk approve <jobId>
 ```
 
 ## Examples & Integrations

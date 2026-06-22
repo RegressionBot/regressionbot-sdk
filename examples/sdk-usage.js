@@ -1,4 +1,4 @@
-const { RegressionBot } = require('regressionbot'); // Using the package name
+const { RegressionBot } = require('@regressionbot/sdk'); // Using the package name
 
 async function runDemo() {
     // We recommend using the REGRESSIONBOT_API_KEY environment variable,
