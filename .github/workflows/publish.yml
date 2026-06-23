@@ -1,34 +1,62 @@
-name: Publish to npm
+name: Publish SDK to NPM
 
 on:
+  release:
+    types: [created]
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
 jobs:
-  publish:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Linter
+        run: npm run lint --if-present
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Build Package
+        run: npm run build
+
+  publish-npm:
+    needs: build-test
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # CRITICAL for Trusted Publishing
+      id-token: write # REQUIRED for OIDC/Trusted Publishing and provenance
     steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22' # Node 22+ is required for native Trusted Publishing support
-      
-      - run: npm install
-      - run: npm run build
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Publish to npm
-        # Use npx npm@latest to ensure we have the latest CLI (v11+) for stable OIDC/Trusted Publishing
-        # without crashing the runner via a global upgrade.
-        run: |
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          if npx npm@latest view "$PACKAGE_NAME@$CURRENT_VERSION" version > /dev/null 2>&1; then
-            echo "Version $CURRENT_VERSION already exists on npm. Skipping publish."
-          else
-            npx npm@latest publish --provenance --access public
-          fi
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Package
+        run: npm run build
+
+      - name: Publish to NPM
+        run: npm publish --provenance --access public
