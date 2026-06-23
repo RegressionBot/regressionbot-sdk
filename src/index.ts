@@ -305,7 +305,7 @@ export class JobHandle {
 
         if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
 
-        const download = async (url: string, name: string) => {
+        const download = async (url: string, baseName: string) => {
             try {
                 // 🛡️ SECURITY: Prevent SSRF and local file reads by enforcing HTTP(S) protocol
                 validateProtocol(url, 'download URL');
@@ -314,15 +314,23 @@ export class JobHandle {
                 const res = await fetchWithTimeout(url);
                 
                 if (!res.ok) {
-                    console.warn(`Warning: Failed to download ${name} from ${url} (Status: ${res.status})`);
+                    console.warn(`Warning: Failed to download ${baseName} from ${url} (Status: ${res.status})`);
                     return;
                 }
                 
+                // Determine file extension from Content-Type header
+                const contentType = res.headers.get('content-type') || '';
+                let ext = '.png'; // default fallback
+                if (contentType.includes('image/jpeg') || contentType.includes('image/jpg')) {
+                    ext = '.jpg';
+                }
+
+                const finalName = `${baseName}${ext}`;
                 const buffer = Buffer.from(await res.arrayBuffer());
-                const filePath = path.join(jobDir, name);
+                const filePath = path.join(jobDir, finalName);
                 fs.writeFileSync(filePath, buffer);
             } catch (err: any) {
-                console.warn(`Warning: Failed to download ${name}: ${err.message}`);
+                console.warn(`Warning: Failed to download ${baseName}: ${err.message}`);
             }
         };
 
@@ -331,10 +339,10 @@ export class JobHandle {
             const nameBase = sanitizeUrlToPath(r.url);
             const safeVariant = sanitizeFilename(r.variantName);
 
-            if (r.diffUrl) await download(r.diffUrl, `${nameBase}_diff_${safeVariant}.png`);
+            if (r.diffUrl) await download(r.diffUrl, `${nameBase}_diff_${safeVariant}`);
             if (options.full) {
-                if (r.baselineUrl) await download(r.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
-                if (r.currentUrl) await download(r.currentUrl, `${nameBase}_current_${safeVariant}.png`);
+                if (r.baselineUrl) await download(r.baselineUrl, `${nameBase}_baseline_${safeVariant}`);
+                if (r.currentUrl) await download(r.currentUrl, `${nameBase}_current_${safeVariant}`);
             }
         }
 
@@ -344,8 +352,8 @@ export class JobHandle {
                 const nameBase = sanitizeUrlToPath(m.url);
                 const safeVariant = sanitizeFilename(m.variantName);
 
-                if (m.baselineUrl) await download(m.baselineUrl, `${nameBase}_baseline_${safeVariant}.png`);
-                if (m.currentUrl) await download(m.currentUrl, `${nameBase}_current_${safeVariant}.png`);
+                if (m.baselineUrl) await download(m.baselineUrl, `${nameBase}_baseline_${safeVariant}`);
+                if (m.currentUrl) await download(m.currentUrl, `${nameBase}_current_${safeVariant}`);
             }
         }
     }

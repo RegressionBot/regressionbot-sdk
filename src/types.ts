@@ -87,7 +87,7 @@ export interface JobProgress {
 export interface JobStatus {
     jobId: string;
     status: 'INITIALIZING' | 'PROCESSING' | 'FINISHING' | 'SUMMARIZING' | 'COMPLETED' | 'APPROVED' | 'FAILED';
-    summaryStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'NONE';
+    summaryStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETE';
     error?: string;
     progress?: JobProgress;
     executionTime?: number;
@@ -99,7 +99,7 @@ export interface JobStatus {
 export interface JobSummary {
     jobId: string;
     status: string;
-    summaryStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'NONE';
+    summaryStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETE';
     error?: string | null;
     totalUrls: number;
     completedCount: number;
