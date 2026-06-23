@@ -1,6 +1,6 @@
 {
-  "name": "regressionbot",
-  "version": "1.2.2",
+  "name": "@regressionbot/sdk",
+  "version": "1.2.3",
   "description": "The official SDK for regressionbot.com - the simplest way to automate visual regression testing.",
   "homepage": "https://regressionbot.com",
   "repository": {
@@ -32,6 +32,9 @@
   ],
   "author": "RegressionBot (https://regressionbot.com)",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

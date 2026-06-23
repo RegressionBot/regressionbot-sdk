@@ -65,7 +65,7 @@ jobs:
           # The CLI will crawl your site using its sitemap.xml.
           # Replace --project and --against URL with your production values.
 
-          npx regressionbot@latest ${{ steps.env.outputs.url }} \
+          npx @regressionbot/sdk@latest ${{ steps.env.outputs.url }} \
             --project "my-amplify-site" \
             --against "https://www.your-production-site.com" \
             --sitemap "${{ steps.env.outputs.url }}/sitemap.xml" \

@@ -109,6 +109,20 @@ export class RegressionBot {
         return new JobHandle(this, res.jobId);
     }
 
+    /**
+     * Update the configuration settings for a named project.
+     */
+    public async updateProject(
+        projectName: string,
+        config: Partial<ProjectConfig>
+    ): Promise<ProjectConfig> {
+        return this._request<ProjectConfig>(
+            `/project/${encodeURIComponent(projectName)}`,
+            'PUT',
+            config
+        );
+    }
+
 
     // Internal fetch wrapper
     public async _request<T>(path: string, method: string = 'GET', body?: any): Promise<T> {

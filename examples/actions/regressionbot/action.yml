@@ -40,7 +40,7 @@ runs:
         REGRESSIONBOT_API_KEY: ${{ inputs.api-key }}
       run: |
         if [ "${{ inputs.command }}" == "check" ]; then
-          CMD="npx regressionbot@latest ${{ inputs.test-origin }} --on \"${{ inputs.devices }}\""
+          CMD="npx @regressionbot/sdk@latest ${{ inputs.test-origin }} --on \"${{ inputs.devices }}\""
           if [ ! -z "${{ inputs.project }}" ]; then
             CMD="$CMD --project ${{ inputs.project }}"
           fi
@@ -64,9 +64,9 @@ runs:
           fi
           eval $CMD
         elif [ "${{ inputs.command }}" == "approve" ]; then
-          npx regressionbot@latest approve ${{ inputs.job-id }}
+          npx @regressionbot/sdk@latest approve ${{ inputs.job-id }}
         elif [ "${{ inputs.command }}" == "status" ]; then
-          npx regressionbot@latest status ${{ inputs.job-id }}
+          npx @regressionbot/sdk@latest status ${{ inputs.job-id }}
         else
           echo "Unknown command: ${{ inputs.command }}"
           exit 1
