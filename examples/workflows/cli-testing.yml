@@ -18,7 +18,7 @@ jobs:
         env:
           REGRESSIONBOT_API_KEY: ${{ secrets.REGRESSIONBOT_API_KEY }}
         run: |
-          npx regressionbot@latest https://regressionbot.com \
+          npx @regressionbot/sdk@latest https://regressionbot.com \
             --project "cli-test" \
             --on "Desktop Chrome" \
             --scan "/"

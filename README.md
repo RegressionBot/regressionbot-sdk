@@ -4,6 +4,11 @@ The official SDK for [RegressionBot.com](https://regressionbot.com) — the simp
 
 RegressionBot is a declarative visual regression testing platform that helps you catch UI changes before they reach production. This SDK provides a fluent, chainable API to define your test scope, run visual tests, and manage baselines programmatically.
 
+[![RegressionBot Docs](https://img.shields.io/badge/docs-regressionbot.com-4be277?style=for-the-badge&labelColor=0b0f14)](https://regressionbot.com/docs)
+
+---
+
+
 ## Why RegressionBot?
 
 Unlike traditional visual diffing libraries, RegressionBot is designed for modern, automated development loops and agentic pipelines:
