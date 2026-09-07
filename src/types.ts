@@ -170,12 +170,28 @@ export interface RegionVerdict {
     reasoning: string;
 }
 
-/** The rolled-up verdict for one result, plus the per-region verdicts behind it. */
+/**
+ * How one page's change measures against the intent the run was given. Present only when the
+ * job carried a {@link RunContext}. A verdict is a recommendation: {@link Job.approve} and
+ * rejecting remain the only actions that move a baseline.
+ */
 export interface ResultVerdict {
     decision: VerdictDecision;
+    /** The confidence in the decision, 0–1. */
     minConfidence: number;
+    /** One sentence saying why. */
+    reasoning?: string;
+    /**
+     * For `intentional` only: the words of the intent, quoted verbatim, that name this change.
+     * An intentional verdict whose quoted words are not in the intent is downgraded to
+     * `needs_review` before it is stored.
+     */
+    coveredBy?: string;
+    /** When the decision was made. */
+    judgedAt?: string;
+    /** @deprecated Equal to `minConfidence`. Kept for older clients. */
     avgConfidence: number;
-    /** Keyed by region label (A, B, C…). Empty when the verdict came from the text-only pass. */
+    /** @deprecated Always empty. Kept for older clients. */
     regions: Record<string, RegionVerdict>;
     /**
      * What the judgement was made from.
@@ -347,6 +363,14 @@ export interface PageResult {
      * the run carried a {@link RunContext}, and only once summaryStatus is COMPLETE.
      */
     verdict?: ResultVerdict;
+    /** A person's Approve or Reject on this page, written by {@link Job.approve} or the dashboard. */
+    triageStatus?: 'PENDING' | 'APPROVING' | 'APPROVED' | 'REJECTED';
+    triagedAt?: string;
+    triagedBy?: string;
+    /** The verdict's decision at the moment of the click; null when the page had none. */
+    triagedVerdict?: VerdictDecision | null;
+    /** Optional, from the person, when their action disagreed with the verdict. */
+    triageNote?: string;
     /**
      * The exact edits the engine computed from the two documents — element, text before,
      * text after, changed styles. Absent when the DOM comparison could not run on the page,
@@ -404,6 +428,8 @@ export interface JobStatus {
     progress: JobProgress;
     executionTime: number;
     createdAt: string;
+    /** Whether the run carried an intent. Without one no page gets a verdict. */
+    intentProvided?: boolean;
     /** Partial or complete results. Fills in as workers finish. */
     results: PageResult[];
 }
@@ -457,6 +483,12 @@ export interface RunContext {
 }
 
 export interface IntentAssessment {
+    /**
+     * The one field a CI step reads. `fail`: a page contradicts the intent. `review`: a page
+     * needs a person, or was never assessed. `pass`: every changed page is accounted for.
+     * `not_judged`: the run carried no intent, so nothing was assessed.
+     */
+    decision: 'pass' | 'review' | 'fail' | 'not_judged';
     /** False when the run carried no RunContext, in which case the counts are all zero. */
     intentProvided: boolean;
     bugCount: number;
@@ -469,10 +501,17 @@ export interface IntentAssessment {
     summary: string;
 }
 
+/** Approve only the pages whose verdict is in the list. A job-level filter. */
+export interface ApproveWhere {
+    decision: VerdictDecision[];
+}
+
 export interface ApproveResult {
     message: string;
     jobId: string;
     approvedUrlsCount: number;
+    /** With `where` only: changed pages left pending because their verdict was outside the list or absent. */
+    skippedUrlsCount?: number;
     /** Present when some captures could not be promoted. */
     failedCount?: number;
     /** Pages skipped because another job updated their baseline first. */

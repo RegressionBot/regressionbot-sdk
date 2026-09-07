@@ -22,6 +22,7 @@ import {
     EnvGate,
     SummaryStatus,
     ApproveResult,
+    ApproveWhere,
     Change,
     ChangeType,
     StyleDelta,
@@ -60,6 +61,7 @@ export type {
     EnvGate,
     SummaryStatus,
     ApproveResult,
+    ApproveWhere,
     Change,
     ChangeType,
     StyleDelta,
@@ -353,8 +355,13 @@ export class JobHandle {
         return this.sdk._request<JobSummary>(`/job/${encodeURIComponent(this.jobId)}/summary`);
     }
 
-    public async approve(): Promise<ApproveResult> {
-        return this.sdk._request<ApproveResult>('/approve', 'POST', { jobId: this.jobId });
+    /**
+     * Promote this job's captures to baselines. Pass `where` to approve only the pages whose
+     * verdict is in the list — `{ decision: ['intentional', 'noise'] }` approves what the verdict
+     * cleared and leaves the flagged pages for a person.
+     */
+    public async approve(where?: ApproveWhere): Promise<ApproveResult> {
+        return this.sdk._request<ApproveResult>('/approve', 'POST', { jobId: this.jobId, ...(where ? { where } : {}) });
     }
 
     /**

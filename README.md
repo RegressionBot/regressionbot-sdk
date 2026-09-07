@@ -360,6 +360,22 @@ const result = await job.approve();
 console.log(`Approved ${result.approvedUrlsCount} URLs.`);
 ```
 
+When the run carried an intent (`.withContext()`), approve only the pages the
+verdict cleared and leave the flagged ones for a person:
+
+```typescript
+const summary = await job.getSummary();
+if (summary.intentAssessment.decision !== 'pass') {
+  const result = await job.approve({ decision: ['intentional', 'noise'] });
+  console.log(`Approved ${result.approvedUrlsCount}, ${result.skippedUrlsCount} left for review.`);
+}
+```
+
+`intentAssessment.decision` is `pass`, `review`, `fail`, or `not_judged` when the
+run carried no intent. Each regression's `verdict` carries `reasoning`, `basis`
+(`measured` or `described`) and, for `intentional`, the words of the intent it
+`coveredBy`. Both need API 2.9.0 or later.
+
 ### Saved Projects
 
 Projects let you save a test configuration in the RegressionBot dashboard and trigger runs against it without re-specifying every option.
