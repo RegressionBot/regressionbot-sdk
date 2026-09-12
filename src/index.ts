@@ -446,7 +446,7 @@ export class JobHandle {
     }
 
     /**
-     * Poll until the job reaches a terminal state (COMPLETED, APPROVED, or FAILED).
+     * Poll until the job reaches a terminal state (COMPLETED, APPROVED, RESOLVED or FAILED).
      * @param intervalMs Polling interval in milliseconds. Defaults to 2000.
      * @param callback Optional callback invoked on each status poll.
      * @param options.waitForSummaries If true, keeps polling until AI summaries are fully populated before returning.
@@ -459,7 +459,10 @@ export class JobHandle {
         while (true) {
             const status = await this.getStatus();
             if (callback) callback(status);
-            if (status.status === 'COMPLETED' || status.status === 'APPROVED') {
+            // RESOLVED is terminal too: every page carrying a diff was decided and at least one
+            // was rejected. Omitting it polled until the caller's timeout on any run with a
+            // rejection, which this release made the common way a triaged run ends.
+            if (status.status === 'COMPLETED' || status.status === 'APPROVED' || status.status === 'RESOLVED') {
                 if (options?.waitForSummaries) {
                     if (status.summaryStatus !== 'PENDING' && status.summaryStatus !== 'PROCESSING') {
                         return status;

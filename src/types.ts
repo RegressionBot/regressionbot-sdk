@@ -418,7 +418,12 @@ export type SummaryStatus = 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED';
 
 export interface JobStatus {
     jobId: string;
-    status: 'INITIALIZING' | 'PROCESSING' | 'FINISHING' | 'SUMMARIZING' | 'COMPLETED' | 'APPROVED' | 'FAILED';
+    /**
+     * Terminal states are COMPLETED, APPROVED, RESOLVED and FAILED. APPROVED means every page
+     * carrying a diff was approved; RESOLVED means they were all decided and at least one was
+     * rejected. RESOLVED was missing here, and waitForCompletion polled past it forever.
+     */
+    status: 'INITIALIZING' | 'PROCESSING' | 'FINISHING' | 'SUMMARIZING' | 'COMPLETED' | 'APPROVED' | 'RESOLVED' | 'FAILED';
     /**
      * PENDING means not yet started, COMPLETE that regressionbotSummary is populated
      * (or that nothing needed one). Poll until COMPLETE before reading summaries.
@@ -437,7 +442,7 @@ export interface JobStatus {
 export interface JobSummary {
     jobId: string;
     /** getSummary() throws until the job reaches one of these. */
-    status: 'COMPLETED' | 'APPROVED' | 'FAILED';
+    status: 'COMPLETED' | 'APPROVED' | 'RESOLVED' | 'FAILED';
     summaryStatus: SummaryStatus;
     error: string | null;
     totalUrls: number;
