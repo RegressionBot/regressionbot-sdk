@@ -377,10 +377,46 @@ export class JobHandle {
                 'approve(where) reached an API that does not support the filter, so EVERY page in '
                 + `job ${this.jobId} was approved and its baselines have already moved. Check the `
                 + 'job and re-reject anything that should not have been promoted. Upgrade the API '
-                + 'to 2.9.0 or later, or call approve() per page with url and variantName.'
+                + 'to 2.9.0 or later, or decide the pages one at a time with approvePage and '
+                + 'rejectPage.'
             );
         }
         return result;
+    }
+
+    /**
+     * Approve one page's capture, leaving the rest of the job alone.
+     *
+     * `note` records what the verdict missed, and is worth sending when you are overruling it —
+     * approving a page it called a bug, or rejecting one it cleared.
+     */
+    public async approvePage(url: string, variantName: string, note?: string): Promise<ApproveResult> {
+        return this.decidePage('approve', url, variantName, note);
+    }
+
+    /** Reject one page, leaving its baseline where it is. See `approvePage` for `note`. */
+    public async rejectPage(url: string, variantName: string, note?: string): Promise<ApproveResult> {
+        return this.decidePage('reject', url, variantName, note);
+    }
+
+    private async decidePage(
+        action: 'approve' | 'reject',
+        url: string,
+        variantName: string,
+        note?: string
+    ): Promise<ApproveResult> {
+        // Both halves are required together: `url` without `variantName` matches nothing, and the
+        // API answers that with a whole-job approval rather than an error.
+        if (!url || !variantName) {
+            throw new Error('approvePage and rejectPage need both a url and a variantName.');
+        }
+        return this.sdk._request<ApproveResult>('/approve', 'POST', {
+            jobId: this.jobId,
+            url,
+            variantName,
+            action,
+            ...(note ? { note } : {}),
+        });
     }
 
     /**

@@ -435,6 +435,8 @@ export interface JobStatus {
     createdAt: string;
     /** Whether the run carried an intent. Without one no page gets a verdict. */
     intentProvided?: boolean;
+    /** Whether this run compared two live origins or one origin against a stored baseline. */
+    comparisonMode?: 'live-vs-live' | 'managed';
     /** Partial or complete results. Fills in as workers finish. */
     results: PageResult[];
 }
@@ -521,6 +523,8 @@ export interface ApproveResult {
     failedCount?: number;
     /** Pages skipped because another job updated their baseline first. */
     conflictedUrls?: string[];
+    /** One page only: what approvePage or rejectPage wrote on that page's result. */
+    triageStatus?: 'APPROVED' | 'REJECTED';
 }
 
 export interface JobAiSummary {

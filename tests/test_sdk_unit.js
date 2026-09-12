@@ -287,6 +287,56 @@ async function testJobHandleMethods() {
     console.log('  OK: plain approve() still works');
     restoreFetch();
 
+    // Test approvePage() / rejectPage(): the API's third form, one page at a time.
+    console.log('  Testing approvePage() and rejectPage()...');
+    let sentBody = null;
+    setMockFetch(async (url, options) => {
+        sentBody = JSON.parse(options.body);
+        return {
+            ok: true,
+            json: async () => ({
+                message: 'Rejected',
+                jobId: 'test-job-456',
+                approvedUrlsCount: 0,
+                triageStatus: 'REJECTED',
+            })
+        };
+    });
+    const rejected = await job.rejectPage('https://example.com/pricing', 'Desktop Chrome', 'the nav lost a link');
+    assert.strictEqual(sentBody.url, 'https://example.com/pricing');
+    assert.strictEqual(sentBody.variantName, 'Desktop Chrome');
+    assert.strictEqual(sentBody.action, 'reject');
+    assert.strictEqual(sentBody.note, 'the nav lost a link');
+    assert.strictEqual(sentBody.where, undefined);
+    assert.strictEqual(rejected.triageStatus, 'REJECTED');
+    console.log('  OK: rejectPage() sends the page, the action and the note');
+
+    setMockFetch(async (url, options) => {
+        sentBody = JSON.parse(options.body);
+        return { ok: true, json: async () => ({ message: 'Approved', jobId: 'test-job-456', approvedUrlsCount: 1, triageStatus: 'APPROVED' }) };
+    });
+    await job.approvePage('https://example.com/pricing', 'Desktop Chrome');
+    assert.strictEqual(sentBody.action, 'approve');
+    assert.strictEqual(sentBody.note, undefined, 'no note means no note field');
+    console.log('  OK: approvePage() defaults to approve and omits an absent note');
+    restoreFetch();
+
+    // A url with no variantName is not a per-page call to the API — it falls through to the
+    // whole-job approval, so the SDK must refuse it rather than approve everything by accident.
+    console.log('  Testing approvePage() refuses a half-identified page...');
+    let reqMade = false;
+    setMockFetch(async () => { reqMade = true; return { ok: true, json: async () => ({}) }; });
+    let pageThrew = null;
+    try {
+        await job.approvePage('https://example.com/pricing', '');
+    } catch (e) {
+        pageThrew = e;
+    }
+    assert.ok(pageThrew, 'approvePage must throw without a variantName');
+    assert.strictEqual(reqMade, false, 'and must not have called the API at all');
+    console.log('  OK: approvePage() throws without a variantName and sends nothing');
+    restoreFetch();
+
     // Test generateAiSummary()
     console.log('  Testing generateAiSummary()...');
     setMockFetch(async (url, options) => {
