@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { RegressionBot } from './index';
 import { sanitizeFilename } from './security';
-import { JobStatus, JobSummary, PageResult, RunContext } from './types';
+import { JobStatus, JobSummary, PageResult, RunContext, VerdictDecision } from './types';
 import * as path from 'path';
 
 function formatSummary(items: PageResult['regressionbotSummary']): string {
@@ -42,6 +42,28 @@ function parseFailOn(raw: unknown): FailOn {
     if (raw === undefined) return 'any';
     if (raw === 'any' || raw === 'unintended') return raw;
     throw new UsageError("--fail-on takes 'any' or 'unintended'.");
+}
+
+const DECISIONS = ['intentional', 'bug', 'noise', 'needs_review'] as const;
+
+/**
+ * `--decision intentional,noise` -> the approve filter, or undefined for no filter.
+ *
+ * Validated here rather than at the API, because the failure is asymmetric: a typo the API
+ * rejects costs a round trip, but a typo that reached a filter-blind API would approve the
+ * whole job. Unknown values stop the command.
+ */
+function parseDecisions(raw: unknown): VerdictDecision[] | undefined {
+    if (raw === undefined) return undefined;
+    if (typeof raw !== 'string' || !raw.trim()) {
+        throw new UsageError(`--decision takes a comma-separated list of: ${DECISIONS.join(', ')}.`);
+    }
+    const wanted = raw.split(',').map(d => d.trim()).filter(Boolean);
+    const bad = wanted.filter(d => !(DECISIONS as readonly string[]).includes(d));
+    if (bad.length > 0) {
+        throw new UsageError(`--decision does not take ${bad.join(', ')}. Use: ${DECISIONS.join(', ')}.`);
+    }
+    return wanted as VerdictDecision[];
 }
 
 /**
@@ -146,7 +168,7 @@ async function main() {
             await showSummary(param, argv);
         } else if (command === 'approve') {
             if (!param) throw new Error('Job ID is required for approve command.');
-            await approveJob(param);
+            await approveJob(param, parseDecisions(argv['decision']));
         } else if (command.startsWith('http')) {
             // Implicit test command
             await startJob(command, argv);
@@ -173,6 +195,8 @@ Usage:
                                      Use --download to save the diff image locally.
                                      Use --download-full to save baseline and current images too.
   npx regressionbot approve <jobId> Approve a job's results as new baselines.
+                                     Use --decision to approve only what the verdict
+                                     cleared, e.g. --decision intentional,noise.
 
 Options for <url>:
   --project <id>       Required project ID.
@@ -402,11 +426,25 @@ Errors: ${summary.errorCount}
     }
 }
 
-async function approveJob(jobId: string) {
-    console.log(`Approving baselines for job: ${jobId}...`);
+async function approveJob(jobId: string, decision?: VerdictDecision[]) {
     const job = sdk.job(jobId);
-    const res = await job.approve();
+    if (!decision) {
+        console.log(`Approving every page in job: ${jobId}...`);
+        const res = await job.approve();
+        console.log(`Success! ${res.message}`);
+        return;
+    }
+    console.log(`Approving pages the verdict called ${decision.join(' or ')} in job: ${jobId}...`);
+    const res = await job.approve({ decision });
     console.log(`Success! ${res.message}`);
+    // Left pending on purpose, and the reason a CI step should not go green here: these are
+    // the changed pages the verdict did not clear, plus any it never assessed.
+    if (res.skippedUrlsCount) {
+        console.log(`${res.skippedUrlsCount} changed page(s) left for a person to decide.`);
+    }
+    if (res.conflictedUrls?.length) {
+        console.log(`${res.conflictedUrls.length} page(s) skipped: another job moved their baseline first.`);
+    }
 }
 
 // Only run when invoked as a command, so the pure helpers below can be imported and
@@ -415,4 +453,4 @@ if (require.main === module) {
     main();
 }
 
-export { parseArgs, parseFailOn, isBlocking, selectBlocking, buildRunContext, printRegression };
+export { parseArgs, parseFailOn, parseDecisions, isBlocking, selectBlocking, buildRunContext, printRegression };

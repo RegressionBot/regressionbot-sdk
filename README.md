@@ -74,6 +74,34 @@ the builder, intent-aware verdicts, environment gates, baseline policies, and
 scheduling. `scheduleHourUtc` needs API 2.7.0 or later — on an older API the
 field is accepted and ignored, and the schedule stays anchored to its first run.
 
+### 2.3.0
+
+Needs API 2.9.0 or later. On an older API the verdict fields are simply absent, with
+one exception called out below.
+
+- **`RESOLVED` is a terminal status, and `waitForCompletion` now stops on it.** A run
+  reaches `APPROVED` only when every page carrying a diff was approved; decide them all
+  and reject one and it lands on `RESOLVED` instead. The old terminal check knew
+  `COMPLETED` and `APPROVED` only, so a triaged run with a single rejection polled until
+  the caller gave up. API 2.9.0 made that the common way such a run ends.
+- **`approvePage(url, variantName, note?)` and `rejectPage(...)`** decide one page and
+  leave the rest of the job alone. The optional `note` records what the verdict missed,
+  and is worth sending when you are overruling it. Both refuse a url without a
+  `variantName`: the API gates its per-page path on having both, and a half-identified
+  page falls through to approving the whole job.
+- **`approve(where)` throws if it reaches an API that does not support the filter.**
+  This is the exception. An older API reads `jobId`, ignores the rest of the body, and
+  approves EVERY page — including the ones the verdict called bugs — while answering
+  like a success. `skippedUrlsCount` is the tell: the filter path always reports it,
+  even as 0, and no other path reports it at all. The error says plainly that the
+  baselines have already moved, because by then they have.
+- **Verdict and triage fields typed.** On a regression: `basis`, `coveredBy`,
+  `reasoning` and a deprecated `judgedAt`. On a page a person decided: `triageStatus`,
+  `triagedAt`, `triagedBy`, `triagedVerdict` and `triageNote`. On the job:
+  `intentAssessment.decision` and `intentProvided`.
+- **`comparisonMode`** on the job status says whether the run compared two live origins
+  or one origin against a stored baseline.
+
 ### 2.2.1
 
 - **A builder run with no `check()` or `scan()` no longer invents a home path.** It
@@ -332,7 +360,11 @@ const job = await rb
 
 ### Progress Tracking
 
-Pass a callback to `waitForCompletion` to receive status updates while the job runs:
+`waitForCompletion` returns on `COMPLETED`, `APPROVED` or `RESOLVED`, and throws on
+`FAILED`. `APPROVED` means every page carrying a diff was approved; `RESOLVED` means
+they were all decided and at least one was rejected.
+
+Pass a callback to receive status updates while the job runs:
 
 ```typescript
 const status = await job.waitForCompletion(3000, (s) => {
@@ -375,6 +407,18 @@ if (summary.intentAssessment.decision !== 'pass') {
 run carried no intent. Each regression's `verdict` carries `reasoning`, `basis`
 (`measured` or `described`) and, for `intentional`, the words of the intent it
 `coveredBy`. Both need API 2.9.0 or later.
+
+To decide one page at a time, name the page and the device:
+
+```typescript
+await job.rejectPage('https://example.com/pricing', 'Desktop Chrome', 'the nav lost a link');
+await job.approvePage('https://example.com/pricing', 'iPhone 12');
+```
+
+The third argument is a note, and it is worth sending when you are overruling the
+verdict — approving a page it called a bug, or rejecting one it cleared. What you
+write is stored on that page as `triageNote`, beside `triageStatus`, `triagedAt`,
+`triagedBy` and the `triagedVerdict` you overruled.
 
 ### Saved Projects
 
@@ -548,6 +592,17 @@ Promote the current screenshots of a job to be the new baselines.
 ```bash
 npx @regressionbot/sdk approve <jobId>
 ```
+
+When the run carried an intent, `--decision` approves only the pages whose verdict is in
+the list and leaves the rest pending:
+```bash
+npx @regressionbot/sdk approve <jobId> --decision intentional,noise
+```
+
+It prints how many changed pages were left for a person. Treat a number above zero as a
+build that is not done: those are the pages the verdict did not clear, plus any it never
+assessed. An unknown value stops the command rather than being sent, because an API that
+does not understand the filter approves the whole job instead.
 
 ## Examples & Integrations
 

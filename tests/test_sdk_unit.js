@@ -696,7 +696,7 @@ async function testProjectMethods() {
 
 async function testCliHelpers() {
     console.log('Testing CLI helpers...');
-    const { parseArgs, parseFailOn, isBlocking, selectBlocking, buildRunContext, printRegression } = require('../dist/cli');
+    const { parseArgs, parseFailOn, parseDecisions, isBlocking, selectBlocking, buildRunContext, printRegression } = require('../dist/cli');
 
     // A CSS custom property starts with '--', so the space-separated form cannot carry it:
     // the value is indistinguishable from the next flag. --key=value is the escape hatch.
@@ -725,6 +725,19 @@ async function testCliHelpers() {
     assert.strictEqual(parseFailOn('unintended'), 'unintended');
     assert.throws(() => parseFailOn('sometimes'), /--fail-on takes/);
     assert.throws(() => parseFailOn(true), /--fail-on takes/);
+
+    console.log('  Testing --decision...');
+    assert.strictEqual(parseDecisions(undefined), undefined, 'no flag means no filter');
+    assert.deepStrictEqual(parseDecisions('intentional'), ['intentional']);
+    assert.deepStrictEqual(parseDecisions('intentional, noise'), ['intentional', 'noise'], 'spaces trimmed');
+    assert.deepStrictEqual(parseDecisions('bug,needs_review'), ['bug', 'needs_review']);
+    // A typo must stop the command. Passed through to an API that does not know the filter,
+    // it would approve the whole job instead of the pages asked for.
+    assert.throws(() => parseDecisions('intentionel'), /--decision does not take intentionel/);
+    assert.throws(() => parseDecisions('intentional,nonsense'), /nonsense/);
+    assert.throws(() => parseDecisions(''), /--decision takes/);
+    assert.throws(() => parseDecisions(true), /--decision takes/);
+    console.log('  OK: --decision parses a list and rejects anything unknown');
 
     // An unjudged regression must block: nothing decided it was wanted, and passing it
     // would turn a missing verdict into a silent green build.
