@@ -361,7 +361,26 @@ export class JobHandle {
      * cleared and leaves the flagged pages for a person.
      */
     public async approve(where?: ApproveWhere): Promise<ApproveResult> {
-        return this.sdk._request<ApproveResult>('/approve', 'POST', { jobId: this.jobId, ...(where ? { where } : {}) });
+        const result = await this.sdk._request<ApproveResult>('/approve', 'POST', {
+            jobId: this.jobId,
+            ...(where ? { where } : {}),
+        });
+        // An API that predates the filter reads `jobId` and ignores everything else, so a body
+        // it does not understand approves EVERY page — including the ones the verdict called
+        // bugs — and answers like a success. The tell is `skippedUrlsCount`: the filter path
+        // always reports it, even as 0, and no other path reports it at all.
+        //
+        // Thrown after the fact because that is when it can be known, and the message has to
+        // say so: the baselines have already moved, and someone has to look.
+        if (where && result.skippedUrlsCount === undefined) {
+            throw new Error(
+                'approve(where) reached an API that does not support the filter, so EVERY page in '
+                + `job ${this.jobId} was approved and its baselines have already moved. Check the `
+                + 'job and re-reject anything that should not have been promoted. Upgrade the API '
+                + 'to 2.9.0 or later, or call approve() per page with url and variantName.'
+            );
+        }
+        return result;
     }
 
     /**

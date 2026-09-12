@@ -231,6 +231,62 @@ async function testJobHandleMethods() {
     console.log('  OK: approve() works');
     restoreFetch();
 
+    // Test approve(where) on an API that supports the filter
+    console.log('  Testing approve(where) sends the filter...');
+    let sentWhere = null;
+    setMockFetch(async (url, options) => {
+        sentWhere = JSON.parse(options.body).where;
+        return {
+            ok: true,
+            json: async () => ({
+                message: 'Approved',
+                jobId: 'test-job-456',
+                approvedUrlsCount: 3,
+                skippedUrlsCount: 2,
+            })
+        };
+    });
+    const filtered = await job.approve({ decision: ['intentional', 'noise'] });
+    assert.deepStrictEqual(sentWhere, { decision: ['intentional', 'noise'] });
+    assert.strictEqual(filtered.skippedUrlsCount, 2);
+    console.log('  OK: approve(where) sends the filter and reads what was skipped');
+    restoreFetch();
+
+    // Test approve(where) against an API that predates the filter.
+    // Such an API reads jobId, ignores the rest, and approves EVERY page while answering like a
+    // success. skippedUrlsCount is the tell: the filter path always reports it, even as 0.
+    console.log('  Testing approve(where) refuses to call a silent approve-all a success...');
+    setMockFetch(async () => ({
+        ok: true,
+        json: async () => ({
+            message: 'Approved',
+            jobId: 'test-job-456',
+            approvedUrlsCount: 5,
+        })
+    }));
+    let threw = null;
+    try {
+        await job.approve({ decision: ['intentional'] });
+    } catch (e) {
+        threw = e;
+    }
+    assert.ok(threw, 'approve(where) must throw when the API ignored the filter');
+    assert.ok(/EVERY page/.test(threw.message), 'the error must say every page was approved');
+    assert.ok(/already moved/.test(threw.message), 'the error must say the baselines already moved');
+    console.log('  OK: approve(where) throws when the filter was ignored');
+    restoreFetch();
+
+    // A plain approve() approves everything by design, so it must NOT trip that check.
+    console.log('  Testing plain approve() is unaffected by the filter check...');
+    setMockFetch(async () => ({
+        ok: true,
+        json: async () => ({ message: 'Approved', jobId: 'test-job-456', approvedUrlsCount: 5 })
+    }));
+    const plain = await job.approve();
+    assert.strictEqual(plain.approvedUrlsCount, 5);
+    console.log('  OK: plain approve() still works');
+    restoreFetch();
+
     // Test generateAiSummary()
     console.log('  Testing generateAiSummary()...');
     setMockFetch(async (url, options) => {
