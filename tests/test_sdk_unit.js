@@ -231,6 +231,112 @@ async function testJobHandleMethods() {
     console.log('  OK: approve() works');
     restoreFetch();
 
+    // Test approve(where) on an API that supports the filter
+    console.log('  Testing approve(where) sends the filter...');
+    let sentWhere = null;
+    setMockFetch(async (url, options) => {
+        sentWhere = JSON.parse(options.body).where;
+        return {
+            ok: true,
+            json: async () => ({
+                message: 'Approved',
+                jobId: 'test-job-456',
+                approvedUrlsCount: 3,
+                skippedUrlsCount: 2,
+            })
+        };
+    });
+    const filtered = await job.approve({ decision: ['intentional', 'noise'] });
+    assert.deepStrictEqual(sentWhere, { decision: ['intentional', 'noise'] });
+    assert.strictEqual(filtered.skippedUrlsCount, 2);
+    console.log('  OK: approve(where) sends the filter and reads what was skipped');
+    restoreFetch();
+
+    // Test approve(where) against an API that predates the filter.
+    // Such an API reads jobId, ignores the rest, and approves EVERY page while answering like a
+    // success. skippedUrlsCount is the tell: the filter path always reports it, even as 0.
+    console.log('  Testing approve(where) refuses to call a silent approve-all a success...');
+    setMockFetch(async () => ({
+        ok: true,
+        json: async () => ({
+            message: 'Approved',
+            jobId: 'test-job-456',
+            approvedUrlsCount: 5,
+        })
+    }));
+    let threw = null;
+    try {
+        await job.approve({ decision: ['intentional'] });
+    } catch (e) {
+        threw = e;
+    }
+    assert.ok(threw, 'approve(where) must throw when the API ignored the filter');
+    assert.ok(/EVERY page/.test(threw.message), 'the error must say every page was approved');
+    assert.ok(/already moved/.test(threw.message), 'the error must say the baselines already moved');
+    console.log('  OK: approve(where) throws when the filter was ignored');
+    restoreFetch();
+
+    // A plain approve() approves everything by design, so it must NOT trip that check.
+    console.log('  Testing plain approve() is unaffected by the filter check...');
+    setMockFetch(async () => ({
+        ok: true,
+        json: async () => ({ message: 'Approved', jobId: 'test-job-456', approvedUrlsCount: 5 })
+    }));
+    const plain = await job.approve();
+    assert.strictEqual(plain.approvedUrlsCount, 5);
+    console.log('  OK: plain approve() still works');
+    restoreFetch();
+
+    // Test approvePage() / rejectPage(): the API's third form, one page at a time.
+    console.log('  Testing approvePage() and rejectPage()...');
+    let sentBody = null;
+    setMockFetch(async (url, options) => {
+        sentBody = JSON.parse(options.body);
+        return {
+            ok: true,
+            json: async () => ({
+                message: 'Rejected',
+                jobId: 'test-job-456',
+                approvedUrlsCount: 0,
+                triageStatus: 'REJECTED',
+            })
+        };
+    });
+    const rejected = await job.rejectPage('https://example.com/pricing', 'Desktop Chrome', 'the nav lost a link');
+    assert.strictEqual(sentBody.url, 'https://example.com/pricing');
+    assert.strictEqual(sentBody.variantName, 'Desktop Chrome');
+    assert.strictEqual(sentBody.action, 'reject');
+    assert.strictEqual(sentBody.note, 'the nav lost a link');
+    assert.strictEqual(sentBody.where, undefined);
+    assert.strictEqual(rejected.triageStatus, 'REJECTED');
+    console.log('  OK: rejectPage() sends the page, the action and the note');
+
+    setMockFetch(async (url, options) => {
+        sentBody = JSON.parse(options.body);
+        return { ok: true, json: async () => ({ message: 'Approved', jobId: 'test-job-456', approvedUrlsCount: 1, triageStatus: 'APPROVED' }) };
+    });
+    await job.approvePage('https://example.com/pricing', 'Desktop Chrome');
+    assert.strictEqual(sentBody.action, 'approve');
+    assert.strictEqual(sentBody.note, undefined, 'no note means no note field');
+    console.log('  OK: approvePage() defaults to approve and omits an absent note');
+    restoreFetch();
+
+    // A url with no variantName is not a per-page call to the API — it falls through to the
+    // whole-job approval, so the SDK must refuse it rather than approve everything by accident.
+    console.log('  Testing approvePage() refuses a half-identified page...');
+    let reqMade = false;
+    setMockFetch(async () => { reqMade = true; return { ok: true, json: async () => ({}) }; });
+    let pageThrew = null;
+    try {
+        await job.approvePage('https://example.com/pricing', '');
+    } catch (e) {
+        pageThrew = e;
+    }
+    assert.ok(pageThrew, 'approvePage must throw without a variantName');
+    assert.strictEqual(reqMade, false, 'and must not have called the API at all');
+    console.log('  OK: approvePage() throws without a variantName and sends nothing');
+    restoreFetch();
+
     // Test generateAiSummary()
     console.log('  Testing generateAiSummary()...');
     setMockFetch(async (url, options) => {
@@ -590,7 +696,7 @@ async function testProjectMethods() {
 
 async function testCliHelpers() {
     console.log('Testing CLI helpers...');
-    const { parseArgs, parseFailOn, isBlocking, selectBlocking, buildRunContext, printRegression } = require('../dist/cli');
+    const { parseArgs, parseFailOn, parseDecisions, isBlocking, selectBlocking, buildRunContext, printRegression } = require('../dist/cli');
 
     // A CSS custom property starts with '--', so the space-separated form cannot carry it:
     // the value is indistinguishable from the next flag. --key=value is the escape hatch.
@@ -619,6 +725,19 @@ async function testCliHelpers() {
     assert.strictEqual(parseFailOn('unintended'), 'unintended');
     assert.throws(() => parseFailOn('sometimes'), /--fail-on takes/);
     assert.throws(() => parseFailOn(true), /--fail-on takes/);
+
+    console.log('  Testing --decision...');
+    assert.strictEqual(parseDecisions(undefined), undefined, 'no flag means no filter');
+    assert.deepStrictEqual(parseDecisions('intentional'), ['intentional']);
+    assert.deepStrictEqual(parseDecisions('intentional, noise'), ['intentional', 'noise'], 'spaces trimmed');
+    assert.deepStrictEqual(parseDecisions('bug,needs_review'), ['bug', 'needs_review']);
+    // A typo must stop the command. Passed through to an API that does not know the filter,
+    // it would approve the whole job instead of the pages asked for.
+    assert.throws(() => parseDecisions('intentionel'), /--decision does not take intentionel/);
+    assert.throws(() => parseDecisions('intentional,nonsense'), /nonsense/);
+    assert.throws(() => parseDecisions(''), /--decision takes/);
+    assert.throws(() => parseDecisions(true), /--decision takes/);
+    console.log('  OK: --decision parses a list and rejects anything unknown');
 
     // An unjudged regression must block: nothing decided it was wanted, and passing it
     // would turn a missing verdict into a silent green build.

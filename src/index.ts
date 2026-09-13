@@ -22,6 +22,7 @@ import {
     EnvGate,
     SummaryStatus,
     ApproveResult,
+    ApproveWhere,
     Change,
     ChangeType,
     StyleDelta,
@@ -60,6 +61,7 @@ export type {
     EnvGate,
     SummaryStatus,
     ApproveResult,
+    ApproveWhere,
     Change,
     ChangeType,
     StyleDelta,
@@ -353,8 +355,68 @@ export class JobHandle {
         return this.sdk._request<JobSummary>(`/job/${encodeURIComponent(this.jobId)}/summary`);
     }
 
-    public async approve(): Promise<ApproveResult> {
-        return this.sdk._request<ApproveResult>('/approve', 'POST', { jobId: this.jobId });
+    /**
+     * Promote this job's captures to baselines. Pass `where` to approve only the pages whose
+     * verdict is in the list — `{ decision: ['intentional', 'noise'] }` approves what the verdict
+     * cleared and leaves the flagged pages for a person.
+     */
+    public async approve(where?: ApproveWhere): Promise<ApproveResult> {
+        const result = await this.sdk._request<ApproveResult>('/approve', 'POST', {
+            jobId: this.jobId,
+            ...(where ? { where } : {}),
+        });
+        // An API that predates the filter reads `jobId` and ignores everything else, so a body
+        // it does not understand approves EVERY page — including the ones the verdict called
+        // bugs — and answers like a success. The tell is `skippedUrlsCount`: the filter path
+        // always reports it, even as 0, and no other path reports it at all.
+        //
+        // Thrown after the fact because that is when it can be known, and the message has to
+        // say so: the baselines have already moved, and someone has to look.
+        if (where && result.skippedUrlsCount === undefined) {
+            throw new Error(
+                'approve(where) reached an API that does not support the filter, so EVERY page in '
+                + `job ${this.jobId} was approved and its baselines have already moved. Check the `
+                + 'job and re-reject anything that should not have been promoted. Upgrade the API '
+                + 'to 2.9.0 or later, or decide the pages one at a time with approvePage and '
+                + 'rejectPage.'
+            );
+        }
+        return result;
+    }
+
+    /**
+     * Approve one page's capture, leaving the rest of the job alone.
+     *
+     * `note` records what the verdict missed, and is worth sending when you are overruling it —
+     * approving a page it called a bug, or rejecting one it cleared.
+     */
+    public async approvePage(url: string, variantName: string, note?: string): Promise<ApproveResult> {
+        return this.decidePage('approve', url, variantName, note);
+    }
+
+    /** Reject one page, leaving its baseline where it is. See `approvePage` for `note`. */
+    public async rejectPage(url: string, variantName: string, note?: string): Promise<ApproveResult> {
+        return this.decidePage('reject', url, variantName, note);
+    }
+
+    private async decidePage(
+        action: 'approve' | 'reject',
+        url: string,
+        variantName: string,
+        note?: string
+    ): Promise<ApproveResult> {
+        // Both halves are required together: `url` without `variantName` matches nothing, and the
+        // API answers that with a whole-job approval rather than an error.
+        if (!url || !variantName) {
+            throw new Error('approvePage and rejectPage need both a url and a variantName.');
+        }
+        return this.sdk._request<ApproveResult>('/approve', 'POST', {
+            jobId: this.jobId,
+            url,
+            variantName,
+            action,
+            ...(note ? { note } : {}),
+        });
     }
 
     /**
@@ -439,7 +501,7 @@ export class JobHandle {
     }
 
     /**
-     * Poll until the job reaches a terminal state (COMPLETED, APPROVED, or FAILED).
+     * Poll until the job reaches a terminal state (COMPLETED, APPROVED, RESOLVED or FAILED).
      * @param intervalMs Polling interval in milliseconds. Defaults to 2000.
      * @param callback Optional callback invoked on each status poll.
      * @param options.waitForSummaries If true, keeps polling until AI summaries are fully populated before returning.
@@ -452,7 +514,10 @@ export class JobHandle {
         while (true) {
             const status = await this.getStatus();
             if (callback) callback(status);
-            if (status.status === 'COMPLETED' || status.status === 'APPROVED') {
+            // RESOLVED is terminal too: every page carrying a diff was decided and at least one
+            // was rejected. Omitting it polled until the caller's timeout on any run with a
+            // rejection, which this release made the common way a triaged run ends.
+            if (status.status === 'COMPLETED' || status.status === 'APPROVED' || status.status === 'RESOLVED') {
                 if (options?.waitForSummaries) {
                     if (status.summaryStatus !== 'PENDING' && status.summaryStatus !== 'PROCESSING') {
                         return status;
