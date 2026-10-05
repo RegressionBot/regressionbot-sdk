@@ -35,12 +35,16 @@ jobs:
       - name: Run Tests
         run: npm test
 
+  # Publishes when main carries a version npm does not have yet, so merging a version bump
+  # is the release. A hand-made GitHub Release still works, and either path skips a version
+  # that is already on npm, so the two cannot publish the same version twice.
   publish-npm:
     needs: build-test
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    concurrency: publish-npm
     permissions:
-      contents: read
+      contents: write # tags the release on a version-bump push
       id-token: write # REQUIRED for OIDC/Trusted Publishing and provenance
     steps:
       - name: Checkout Code
@@ -70,6 +74,7 @@ jobs:
         run: npm run build
 
       - name: Verify the tag matches package.json
+        if: github.event_name == 'release'
         # A release cut from the wrong tag would otherwise republish the current version
         # and fail late, inside npm, after the build has already passed.
         run: |
@@ -80,5 +85,25 @@ jobs:
             exit 1
           fi
 
+      - name: Skip a version npm already has
+        id: version
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          echo "pkg=$PKG" >> "$GITHUB_OUTPUT"
+          if npm view "@regressionbot/sdk@$PKG" version 2>/dev/null | grep -q .; then
+            echo "$PKG is already on npm; nothing to publish"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish to NPM
+        if: steps.version.outputs.published != 'true'
         run: npm publish --provenance --access public
+
+      # Not gated on the publish above, so re-running the job fills in a release that failed
+      # after npm already took the version.
+      - name: Tag and release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.version.outputs.pkg }}
+        run: gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --target "$GITHUB_SHA" --generate-notes
