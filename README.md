@@ -25,7 +25,7 @@ Unlike traditional visual diffing libraries, RegressionBot is designed for moder
 - **Auto-Discovery**: Scan sitemaps with glob patterns and limits.
 - **RegressionBot Summaries**: Plain-English change descriptions for every regression, generated on-demand via the API.
 - **Intent-Aware Verdicts**: Describe what a run is meant to change, and every regression comes back judged as intentional, a bug, or noise.
-- **Scheduled Checks**: Run a saved project unattended, hourly, daily, or weekly — and at a set UTC hour.
+- **Scheduled Checks**: Run a saved project unattended, daily or weekly — and at a set UTC hour.
 - **Project-Based Baselines**: Save and reuse test configurations; share visual history across environments.
 - **Auto-Approval**: Automatically promote screenshots to baselines on jobs that pass your criteria.
 - **Zero Infrastructure**: No browser maintenance or server provisioning — RegressionBot handles it all.
@@ -73,6 +73,28 @@ New in 2.0 and requiring a current API: `.customCss()` and `.withContext()` on
 the builder, intent-aware verdicts, environment gates, baseline policies, and
 scheduling. `scheduleHourUtc` needs API 2.7.0 or later — on an older API the
 field is accepted and ignored, and the schedule stays anchored to its first run.
+
+### 2.4.0
+
+Needs API 2.9.0 or later. On an older API the new fields are simply absent.
+
+- **`'hourly'` is gone from `ProjectSchedule`.** The API stopped accepting it on
+  2026-08-20 and rejects it outright, so code that sends it already fails at runtime;
+  now it fails at compile time instead. Use `'daily'` (with `scheduleHourUtc`) or
+  `'weekly'`. Kept as a minor release because no working call can depend on it.
+- **Environment labels.** `environment` and `baseEnvironment` on a project
+  (`updateProject`, `getProject`) and on each run's status and summary, so a run reads
+  "staging vs production" instead of a bare URL. A label only: never resets baselines.
+- **A standing `intent` on a project**, which scheduled runs are judged against.
+- **`runSummary`** on the job summary: a short AI reading of the whole run.
+- **`changeGroup`** on each regression (`structural`, `edited`, `metadata`,
+  `cosmetic`), the same grouping the digest email uses.
+- **New change detail:** `attribute-edit` and `font-failed` change types, and `label`,
+  `attributes` and `valueOnly` on a change.
+- **`project`, `origin`, `baseOrigin`, `totalUrls` and `completedCount`** on the job status.
+- **Deprecated:** `visualMatchScore`, `overallScore`, `domAssistSkipReason`,
+  `elementsChanged` and a summary item's `verdict`. All still typed; none measure what
+  their names say under the DOM engine.
 
 ### 2.3.0
 
@@ -290,6 +312,16 @@ Two things to know before you rely on it:
 - **`changes` absent is not "nothing changed".** It means the document comparison could not
   run on that page — check `domAssistSkipReason`.
 
+Each change also carries a `type` beyond the ones above — `attribute-edit` for a reader-facing
+attribute (`href`, `alt`, `aria-label`, …; see `c.attributes`) and `font-failed` for a web font
+that didn't load. A change with no words of its own (`style-only`, `attribute-edit`,
+`image-change`) may carry a short `label` naming the element instead, and a date-only edit
+("Sep 17" → "Sep 23") is reported with `valueOnly: 'date'` without counting as a change.
+
+Every regression also carries a `changeGroup` — `structural`, `edited`, `metadata`,
+`cosmetic`, or (on older results) `unmeasured`/`date` — the same grouping the digest email
+uses, so you can filter a run down to one kind of change without re-deriving the rule.
+
 `box` gives you the location in the capture, in CSS pixels from the top-left of the
 full-page image, so it indexes straight into `currentUrl` if you want to crop:
 
@@ -477,7 +509,7 @@ combination. Live-vs-live projects store no baseline and are exempt.
 // Turn on a daily unattended check
 await rb.updateProject('marketing-site-v2', {
   baselinePolicy: 'rolling',
-  schedule: 'daily',   // 'hourly' | 'daily' | 'weekly'
+  schedule: 'daily',   // 'daily' | 'weekly'
 });
 
 // Or pin it to a UTC hour — this one runs at 03:00 UTC every day
@@ -497,14 +529,43 @@ console.log(project.schedule, project.scheduleHourUtc, project.lastScheduledRunA
 
 Without `scheduleHourUtc` the first run starts at the next hourly sweep and the cadence
 anchors to it. With it, the first run waits for that hour as well. Hours only, since the
-scheduler sweeps once an hour, and UTC only. It is rejected on an `hourly` schedule, and
-rejected on a project with no schedule to apply it to. Clearing the schedule clears the
-hour with it, and a missed slot waits for the next one rather than catching up.
+scheduler sweeps once an hour, and UTC only. It is rejected on a project with no schedule
+to apply it to. Clearing the schedule clears the hour with it, and a missed slot waits
+for the next one rather than catching up.
 
 Setting a schedule, its hour, or a baseline policy does **not** invalidate
 baselines — only changes that affect what a capture looks like (`testOrigin`,
 `baseOrigin`, `sitemapUrl`, `paths`, `scans`, `devices`, `masks`, `customCss`) do that.
 Billing is per comparison, so cost scales with frequency.
+
+A scheduled run has no PR or commit to draw an intent from, so give the project a standing
+`intent` instead — every scheduled run is judged against it:
+
+```typescript
+await rb.updateProject('marketing-site-v2', {
+  intent: 'Content is edited in the CMS daily; navigation, pricing and layout must not change.',
+});
+```
+
+Without one, a scheduled run's `intentAssessment.decision` reads `not_judged`. Runs started
+by a caller keep their own `runContext` and are never judged against the project's `intent`.
+Pass `null` or an empty string to remove it. Does not invalidate baselines.
+
+### Environment Labels
+
+Label which environment a project's origins are — `environment` for `testOrigin`,
+`baseEnvironment` for `baseOrigin` on a live-vs-live project — so runs, emails and the
+dashboard read "staging vs production" instead of a bare URL:
+
+```typescript
+await rb.updateProject('marketing-site-v2', { environment: 'staging' });
+
+const project = await rb.getProject('marketing-site-v2');
+console.log(project.environment); // 'staging'
+```
+
+A label only: 1–24 letters, digits, spaces or hyphens, stored lower-case. It never resets
+baselines and never changes a run. Pass `null` or an empty string to remove it.
 
 ### Reconnecting to an Existing Job
 
