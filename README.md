@@ -290,6 +290,16 @@ Two things to know before you rely on it:
 - **`changes` absent is not "nothing changed".** It means the document comparison could not
   run on that page — check `domAssistSkipReason`.
 
+Each change also carries a `type` beyond the ones above — `attribute-edit` for a reader-facing
+attribute (`href`, `alt`, `aria-label`, …; see `c.attributes`) and `font-failed` for a web font
+that didn't load. A change with no words of its own (`style-only`, `attribute-edit`,
+`image-change`) may carry a short `label` naming the element instead, and a date-only edit
+("Sep 17" → "Sep 23") is reported with `valueOnly: 'date'` without counting as a change.
+
+Every regression also carries a `changeGroup` — `structural`, `edited`, `metadata`,
+`cosmetic`, or (on older results) `unmeasured`/`date` — the same grouping the digest email
+uses, so you can filter a run down to one kind of change without re-deriving the rule.
+
 `box` gives you the location in the capture, in CSS pixels from the top-left of the
 full-page image, so it indexes straight into `currentUrl` if you want to crop:
 
@@ -505,6 +515,35 @@ Setting a schedule, its hour, or a baseline policy does **not** invalidate
 baselines — only changes that affect what a capture looks like (`testOrigin`,
 `baseOrigin`, `sitemapUrl`, `paths`, `scans`, `devices`, `masks`, `customCss`) do that.
 Billing is per comparison, so cost scales with frequency.
+
+A scheduled run has no PR or commit to draw an intent from, so give the project a standing
+`intent` instead — every scheduled run is judged against it:
+
+```typescript
+await rb.updateProject('marketing-site-v2', {
+  intent: 'Content is edited in the CMS daily; navigation, pricing and layout must not change.',
+});
+```
+
+Without one, a scheduled run's `intentAssessment.decision` reads `not_judged`. Runs started
+by a caller keep their own `runContext` and are never judged against the project's `intent`.
+Pass `null` or an empty string to remove it. Does not invalidate baselines.
+
+### Environment Labels
+
+Label which environment a project's origins are — `environment` for `testOrigin`,
+`baseEnvironment` for `baseOrigin` on a live-vs-live project — so runs, emails and the
+dashboard read "staging vs production" instead of a bare URL:
+
+```typescript
+await rb.updateProject('marketing-site-v2', { environment: 'staging' });
+
+const project = await rb.getProject('marketing-site-v2');
+console.log(project.environment); // 'staging'
+```
+
+A label only: 1–24 letters, digits, spaces or hyphens, stored lower-case. It never resets
+baselines and never changes a run. Pass `null` or an empty string to remove it.
 
 ### Reconnecting to an Existing Job
 

@@ -76,6 +76,16 @@ export interface ProjectConfig {
     scheduleKeyId?: string;
     /** When the scheduler last started a run. The next run is due one interval after this. */
     lastScheduledRunAt?: string;
+    /** The standing intent scheduled runs are judged against. Absent means scheduled runs are not judged. */
+    intent?: string;
+    /**
+     * Which environment `testOrigin` is: "production", "staging", "preview", "development",
+     * or the team's own word. A label only, shown in emails, the dashboard and MCP; never
+     * resets baselines. Absent when unset.
+     */
+    environment?: string;
+    /** Live-vs-live projects only: which environment `baseOrigin` is. */
+    baseEnvironment?: string;
     createdAt: string;
     updatedAt: string;
     lastRunAt?: string;
@@ -141,6 +151,29 @@ export interface ProjectConfigUpdate {
      * A missed slot waits for the next one rather than catching up.
      */
     scheduleHourUtc?: number | null;
+    /**
+     * The API key the scheduled runs are attributed to. Ignored when the request itself
+     * carries an API key — that key is recorded instead. Required, and checked against the
+     * organisation's keys, when a schedule is set by a caller holding no key (the dashboard).
+     */
+    scheduleKeyId?: string;
+    /**
+     * A standing intent for scheduled runs, which have no PR to draw one from. Say what the
+     * pages are expected to do between checks and what must not change; every scheduled run
+     * is judged against it. Without one a scheduled run reports
+     * `intentAssessment.decision: 'not_judged'`. Runs started by a caller are never judged
+     * against it. Trimmed; pass null or an empty string to remove. Does not invalidate
+     * baselines. Max 1000 characters.
+     */
+    intent?: string | null;
+    /**
+     * Which environment `testOrigin` is: production, staging, preview, development, or your
+     * own word (1-24 letters, digits, spaces, hyphens; stored lower-case). A label only:
+     * never resets baselines and never changes a run. Pass null or an empty string to remove.
+     */
+    environment?: string | null;
+    /** Live-vs-live projects only, which environment `baseOrigin` is. Same rules as `environment`. */
+    baseEnvironment?: string | null;
 }
 
 export interface VRConfig {
@@ -224,6 +257,10 @@ export type ChangeType =
     | 'move-with-edit'
     | 'sticky-reposition'
     | 'reflow-displacement'
+    /** A reader-facing attribute changed (a link target, alt text, an aria-label). See `Change.attributes`. */
+    | 'attribute-edit'
+    /** A web font failed to load for this capture. */
+    | 'font-failed'
     /**
      * The six metadata types: the page's head or its structured data changed while nothing
      * visible moved — a title edited, a canonical rewritten, a JSON-LD block dropped. They
@@ -270,8 +307,29 @@ export interface Change {
     before?: string;
     /** The text after the edit. Absent on a delete. Clipped the same way as `before`. */
     after?: string;
+    /**
+     * On a change with no words of its own (`style-only`, `attribute-edit`, `image-change`):
+     * what a reader calls the element, its text or an image's alt text, up to 40 characters
+     * ("Apply now"). Absent on a large element such as a section, whose text would not name
+     * it, and when the page's changes left no room in the field's size budget: a label never
+     * displaces a change.
+     */
+    label?: string;
     /** Changed computed styles, keyed by CSS property name. */
     style?: Record<string, StyleDelta>;
+    /**
+     * On an `attribute-edit`: each changed reader-facing attribute (href, alt, title,
+     * aria-label, placeholder, role, type, value) as name to [before, after]. A same-origin
+     * link is compared as its path, so a preview's own host is not a change.
+     */
+    attributes?: Record<string, StyleDelta>;
+    /**
+     * Present as `"date"` when every changed word belongs to a date or time ("Sep 17" to
+     * "Sep 23", "3 hours ago"). The edit is reported but does not count toward the page
+     * having changed, so a page can list one and still read unchanged. Numbers, prices and
+     * percentages are never labelled this way.
+     */
+    valueOnly?: 'date';
     /**
      * Where it sits in the current capture.
      *
@@ -307,6 +365,7 @@ export interface RegressionbotSummaryItem {
     label: string;
     /** Single-sentence description of what changed in that region. */
     text: string;
+    /** @deprecated Never set on current results. To be removed after 2026-10-28. */
     verdict?: RegionVerdict;
 }
 
@@ -346,11 +405,22 @@ export interface PageResult {
      */
     metadataChanged?: true;
     /**
+     * Which group this page's change belongs to — `structural`, `edited`, `metadata`,
+     * `unmeasured`, `date` or `cosmetic` — so a caller can filter a run to one kind of
+     * change without re-deriving the rule. The same value the digest email groups on.
+     * Present only on a page that counts as a change. `unmeasured` and `date` occur only
+     * on results from before 2026-09-28.
+     */
+    changeGroup?: 'structural' | 'edited' | 'metadata' | 'unmeasured' | 'date' | 'cosmetic';
+    /**
      * Percentage of pixels that differed from the baseline. Not a change test on its own:
      * 0 does not mean identical — see `changed`.
      */
     diffPercentage: number;
-    /** Perceptual similarity 0-100 (SSIM). */
+    /**
+     * @deprecated Deprecated 2026-09-29. 100 minus `diffPercentage`; it no longer measures
+     * how alike two pictures look. Kept for existing callers. Read `changed` and `changes`.
+     */
     visualMatchScore: number;
     /** True when this capture became a baseline because none existed to compare against. */
     isNewBaseline: boolean;
@@ -387,9 +457,10 @@ export interface PageResult {
     /** Selectors of the elements that changed, when the DOM comparison could identify them. */
     elementsChanged?: string[];
     /**
-     * Set when the DOM comparison could not run. The result is a plain pixel diff with
-     * no semantic change types, so treat its classifications as absent rather than as
-     * "nothing structural changed".
+     * @deprecated Only on results from before 2026-09-28, when the pixel engine compared a
+     * page without its DOM. To be removed after 2026-10-28, when the last of those expire.
+     * The result is a plain pixel diff with no semantic change types, so treat its
+     * classifications as absent rather than as "nothing structural changed".
      */
     domAssistSkipReason?: string;
     /** Pre-signed URL for the stored baseline screenshot. */
@@ -418,6 +489,10 @@ export type SummaryStatus = 'PENDING' | 'PROCESSING' | 'COMPLETE' | 'FAILED';
 
 export interface JobStatus {
     jobId: string;
+    /** The project's environment when the run started. A label only. Absent when the project has none. */
+    environment?: string;
+    /** Live-vs-live runs only: the environment of the base origin. Absent otherwise. */
+    baseEnvironment?: string;
     /**
      * Terminal states are COMPLETED, APPROVED, RESOLVED and FAILED. APPROVED means every page
      * carrying a diff was approved; RESOLVED means they were all decided and at least one was
@@ -431,25 +506,42 @@ export interface JobStatus {
     summaryStatus: SummaryStatus;
     error: string | null;
     progress: JobProgress;
+    /** The project whose configuration this run used, when it had one. */
+    project?: string;
+    /** The origin that was captured as "current". */
+    origin?: string;
+    /** The second origin, captured as the comparison. Present only in live-vs-live mode. */
+    baseOrigin?: string;
     executionTime: number;
     createdAt: string;
     /** Whether the run carried an intent. Without one no page gets a verdict. */
     intentProvided?: boolean;
     /** Whether this run compared two live origins or one origin against a stored baseline. */
     comparisonMode?: 'live-vs-live' | 'managed';
+    /** Page-checks the run made, and how many finished. Mirrors `progress`. */
+    totalUrls?: number;
+    completedCount?: number;
     /** Partial or complete results. Fills in as workers finish. */
     results: PageResult[];
 }
 
 export interface JobSummary {
     jobId: string;
+    /** The project's environment when the run started. A label only. Absent when the project has none. */
+    environment?: string;
+    /** Live-vs-live runs only: the environment of the base origin. Absent otherwise. */
+    baseEnvironment?: string;
     /** getSummary() throws until the job reaches one of these. */
     status: 'COMPLETED' | 'APPROVED' | 'RESOLVED' | 'FAILED';
     summaryStatus: SummaryStatus;
     error: string | null;
     totalUrls: number;
     completedCount: number;
-    /** Overall quality score 0–100 across all tested pages. */
+    /**
+     * @deprecated Deprecated 2026-09-29. 100 minus the average `diffPercentage` over the
+     * job's pages, an errored page counting as 100: not a similarity score. Kept for
+     * existing callers. Read `regressionCount` and each regression's `changes`.
+     */
     overallScore: number;
     executionTime: number;
     regressionCount: number;
@@ -464,6 +556,13 @@ export interface JobSummary {
     newBaselines: Array<{ url: string; variantName: string }>;
     /** Pages that failed to capture or compare. */
     errors: Array<{ url: string; variantName: string; errorMessage: string }>;
+    /**
+     * An AI summary of the whole run, two or three sentences, written once when the run
+     * finished from the exact edits in `regressions` (the same text opens the scheduled-run
+     * email). Null when nothing changed or none could be written. The changes are the
+     * record; this is a reading of them.
+     */
+    runSummary: string | null;
     /** Whole-job roll-up of how the changes line up with the run's stated intent. */
     intentAssessment: IntentAssessment;
     /** The intent this run was given, echoed back. */
