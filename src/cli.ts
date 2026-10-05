@@ -13,6 +13,7 @@ function formatSummary(items: PageResult['regressionbotSummary']): string {
 
 function printRegression(r: PageResult) {
     console.log(`- ${r.url} [${r.variantName}] (Score: ${r.visualMatchScore.toFixed(2)})`);
+    if (r.changeGroup) console.log(`  Group: ${r.changeGroup}`);
     if (r.diffUrl) console.log(`  Diff: ${r.diffUrl}`);
     if (r.verdict) {
         console.log(`  Verdict: ${r.verdict.decision} (confidence ${r.verdict.minConfidence.toFixed(2)}-${r.verdict.avgConfidence.toFixed(2)})`);
