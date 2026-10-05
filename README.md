@@ -74,6 +74,28 @@ the builder, intent-aware verdicts, environment gates, baseline policies, and
 scheduling. `scheduleHourUtc` needs API 2.7.0 or later — on an older API the
 field is accepted and ignored, and the schedule stays anchored to its first run.
 
+### 2.4.0
+
+Needs API 2.9.0 or later. On an older API the new fields are simply absent.
+
+- **`'hourly'` is gone from `ProjectSchedule`.** The API stopped accepting it on
+  2026-08-20 and rejects it outright, so code that sends it already fails at runtime;
+  now it fails at compile time instead. Use `'daily'` (with `scheduleHourUtc`) or
+  `'weekly'`. Kept as a minor release because no working call can depend on it.
+- **Environment labels.** `environment` and `baseEnvironment` on a project
+  (`updateProject`, `getProject`) and on each run's status and summary, so a run reads
+  "staging vs production" instead of a bare URL. A label only: never resets baselines.
+- **A standing `intent` on a project**, which scheduled runs are judged against.
+- **`runSummary`** on the job summary: a short AI reading of the whole run.
+- **`changeGroup`** on each regression (`structural`, `edited`, `metadata`,
+  `cosmetic`), the same grouping the digest email uses.
+- **New change detail:** `attribute-edit` and `font-failed` change types, and `label`,
+  `attributes` and `valueOnly` on a change.
+- **`project`, `origin`, `baseOrigin`, `totalUrls` and `completedCount`** on the job status.
+- **Deprecated:** `visualMatchScore`, `overallScore`, `domAssistSkipReason`,
+  `elementsChanged` and a summary item's `verdict`. All still typed; none measure what
+  their names say under the DOM engine.
+
 ### 2.3.0
 
 Needs API 2.9.0 or later. On an older API the verdict fields are simply absent, with
