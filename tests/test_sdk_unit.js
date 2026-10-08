@@ -640,11 +640,12 @@ async function testProjectMethods() {
             baselinePolicy: 'rolling',
             schedule: 'daily'
         });
-        // The API wraps the project in { message, project }
+        // The API wraps the project in { message, baselinesInvalidated, project }
         return {
             ok: true,
             json: async () => ({
                 message: 'Project configuration updated and baselines invalidated successfully',
+                baselinesInvalidated: true,
                 project: { name: 'my-project', baselinePolicy: 'rolling', schedule: 'daily' }
             })
         };
@@ -652,6 +653,7 @@ async function testProjectMethods() {
     const updated = await sdk.updateProject('my-project', { baselinePolicy: 'rolling', schedule: 'daily' });
     assert.strictEqual(updated.schedule, 'daily', 'updateProject must unwrap the { message, project } envelope');
     assert.strictEqual(updated.message, undefined, 'updateProject must not return the envelope itself');
+    assert.strictEqual(updated.baselinesInvalidated, true, 'updateProject must carry baselinesInvalidated through');
     restoreFetch();
 
     setMockFetch(async (url, options) => {

@@ -95,6 +95,15 @@ export interface ProjectConfig {
 }
 
 /**
+ * What updateProject() returns: the saved config plus whether this patch
+ * discarded the stored baselines, so a caller does not have to re-derive that
+ * from which fields they sent. Never true on a create.
+ */
+export interface ProjectUpdateResult extends ProjectConfig {
+    baselinesInvalidated: boolean;
+}
+
+/**
  * The fields updateProject() accepts.
  *
  * Changing anything that decides what a capture looks like — testOrigin,
