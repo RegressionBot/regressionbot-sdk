@@ -74,6 +74,14 @@ the builder, intent-aware verdicts, environment gates, baseline policies, and
 scheduling. `scheduleHourUtc` needs API 2.7.0 or later — on an older API the
 field is accepted and ignored, and the schedule stays anchored to its first run.
 
+### 2.5.0
+
+- **`updateProject()` now returns `baselinesInvalidated`.** The API has always sent it
+  back alongside the updated project; the 2.0 unwrap kept the project and dropped it, so
+  a caller had to re-derive whether a patch invalidated baselines from which fields they
+  sent. Read it directly instead — true only when this patch discarded baselines that
+  existed, never on a create.
+
 ### 2.4.0
 
 Needs API 2.9.0 or later. On an older API the new fields are simply absent.

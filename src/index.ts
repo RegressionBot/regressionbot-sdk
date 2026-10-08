@@ -19,6 +19,7 @@ import {
     BaselinePolicy,
     ProjectSchedule,
     ProjectConfigUpdate,
+    ProjectUpdateResult,
     EnvGate,
     SummaryStatus,
     ApproveResult,
@@ -58,6 +59,7 @@ export type {
     BaselinePolicy,
     ProjectSchedule,
     ProjectConfigUpdate,
+    ProjectUpdateResult,
     EnvGate,
     SummaryStatus,
     ApproveResult,
@@ -160,14 +162,14 @@ export class RegressionBot {
     public async updateProject(
         projectName: string,
         config: ProjectConfigUpdate
-    ): Promise<ProjectConfig> {
-        // The API wraps the updated project in { message, project }.
-        const res = await this._request<{ message: string; project: ProjectConfig }>(
+    ): Promise<ProjectUpdateResult> {
+        // The API wraps the updated project in { message, baselinesInvalidated, project }.
+        const res = await this._request<{ message: string; baselinesInvalidated: boolean; project: ProjectConfig }>(
             `/project/${encodeURIComponent(projectName)}`,
             'PUT',
             config
         );
-        return res.project;
+        return { ...res.project, baselinesInvalidated: res.baselinesInvalidated };
     }
 
 
