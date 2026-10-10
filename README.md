@@ -398,6 +398,25 @@ const job = await rb
   .run();
 ```
 
+### Low-Fidelity Checks
+
+`.fidelity('low')` trades the full screenshot capture for a fast content-only check against
+another live site — about 3–7s a page instead of up to 50s, reading text, structure, links and
+image addresses but not layout or colour. It needs `.against()` and stores no baseline.
+
+```typescript
+const job = await rb
+  .test(process.env.VERCEL_PREVIEW_URL)
+  .against('https://production-app.com')
+  .forProject('marketing-site-v2')
+  .fidelity('low')
+  .run();
+```
+
+A low-fidelity result has no `currentUrl`/`baselineUrl` and carries `fidelity: 'low'`; the job's
+status and summary carry a `scopeNote` saying what it did not look at. A project can default to
+low fidelity too: `rb.updateProject('marketing-site-v2', { fidelity: 'low' })`.
+
 ### Progress Tracking
 
 `waitForCompletion` returns on `COMPLETED`, `APPROVED` or `RESOLVED`, and throws on

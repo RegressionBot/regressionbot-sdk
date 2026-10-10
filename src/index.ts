@@ -77,11 +77,11 @@ export class RegressionBot {
     constructor(apiKey?: string, apiUrl?: string) {
         this.apiKey = apiKey || process.env.REGRESSIONBOT_API_KEY || "";
         this.apiUrl = apiUrl || process.env.REGRESSIONBOT_API_URL || "https://api.regressionbot.com";
-        
+
         if (!this.apiKey) {
             console.warn("Warning: No API Key provided. Set REGRESSIONBOT_API_KEY environment variable or pass it to the constructor.");
         }
-        
+
         if (this.apiUrl.endsWith('/')) {
             this.apiUrl = this.apiUrl.slice(0, -1);
         }
@@ -143,6 +143,13 @@ export class RegressionBot {
             autoApprove?: boolean;
             /** What this run is testing, used to judge whether changes were intended. */
             runContext?: RunContext;
+            /**
+             * `low`: a fast content-only check (about 3-7s a page instead of up to 50s),
+             * needs `baseOrigin`, stores no baseline. `high` (default): today's full
+             * capture. Must match the stored value if sent; taken from the project if
+             * omitted.
+             */
+            fidelity?: 'low' | 'high';
         } = {}
     ): Promise<JobHandle> {
         const res = await this._request<{ jobId: string }>(
@@ -215,6 +222,7 @@ export class JobBuilder {
         customCss?: string;
         autoApprove?: boolean;
         runContext?: RunContext;
+        fidelity?: 'low' | 'high';
     };
 
     constructor(sdk: RegressionBot, testOrigin: string) {
@@ -299,6 +307,17 @@ export class JobBuilder {
     }
 
     /**
+     * Capture fidelity for this run. `low` is a fast content-only check — about 3-7s a
+     * page instead of up to 50s, reading only text, structure, links and image
+     * addresses — and needs `.against()`; it stores no baseline. `high` (default) is
+     * today's full screenshot capture. Omit to take the project's own fidelity.
+     */
+    public fidelity(level: 'low' | 'high'): this {
+        this.manifest.fidelity = level;
+        return this;
+    }
+
+    /**
      * Describe what this run is testing — commit, PR, expected changes — so
      * RegressionBot can judge whether each change was intentional.
      * Merges with anything set by an earlier call.
@@ -332,7 +351,8 @@ export class JobBuilder {
             autoApprove: this.manifest.autoApprove,
             masks: this.manifest.masks,
             customCss: this.manifest.customCss,
-            runContext: this.manifest.runContext
+            runContext: this.manifest.runContext,
+            fidelity: this.manifest.fidelity
         };
 
         const res = await this.sdk._request<{ jobId: string }>('/crawl', 'POST', payload);
@@ -433,9 +453,9 @@ export class JobHandle {
      * Download images for the job locally.
      * @param options Download options.
      */
-    public async downloadResults(options: { 
-        full?: boolean, 
-        baseDir?: string 
+    public async downloadResults(options: {
+        full?: boolean,
+        baseDir?: string
     } = {}): Promise<void> {
         const summary = await this.getSummary();
         const fs = require('fs');
@@ -453,12 +473,12 @@ export class JobHandle {
 
                 // 🛡️ SECURITY: Fetch with timeout
                 const res = await fetchWithTimeout(url);
-                
+
                 if (!res.ok) {
                     console.warn(`Warning: Failed to download ${baseName} from ${url} (Status: ${res.status})`);
                     return;
                 }
-                
+
                 // Determine file extension from Content-Type header
                 const contentType = res.headers.get('content-type') || '';
                 let ext = '.png'; // default fallback

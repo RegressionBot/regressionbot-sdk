@@ -13,6 +13,7 @@ function formatSummary(items: PageResult['regressionbotSummary']): string {
 
 function printRegression(r: PageResult) {
     console.log(`- ${r.url} [${r.variantName}] (Score: ${r.visualMatchScore.toFixed(2)})`);
+    if (r.fidelity === 'low') console.log(`  Fidelity: low`);
     if (r.changeGroup) console.log(`  Group: ${r.changeGroup}`);
     if (r.diffUrl) console.log(`  Diff: ${r.diffUrl}`);
     if (r.verdict) {
@@ -65,6 +66,19 @@ function parseDecisions(raw: unknown): VerdictDecision[] | undefined {
         throw new UsageError(`--decision does not take ${bad.join(', ')}. Use: ${DECISIONS.join(', ')}.`);
     }
     return wanted as VerdictDecision[];
+}
+
+/**
+ * `--fidelity low|high` -> the run's capture fidelity, or undefined to take the
+ * project's own.
+ *
+ * Validated here for the same reason as `--decision`: a typo the API rejects costs a
+ * round trip, but it is cheaper to catch before sending.
+ */
+function parseFidelity(raw: unknown): 'low' | 'high' | undefined {
+    if (raw === undefined) return undefined;
+    if (raw === 'low' || raw === 'high') return raw;
+    throw new UsageError("--fidelity takes 'low' or 'high'.");
 }
 
 /**
@@ -211,6 +225,8 @@ Options for <url>:
   --mask <selectors>   Comma-separated CSS selectors to hide (e.g. ".ad,#popup").
   --custom-css <css>   CSS injected before each screenshot (max 4096 chars).
                        Use --custom-css="..." if the CSS starts with '--'.
+  --fidelity <level>   'low' (fast content-only check, needs --against) or 'high'
+                       (default, full screenshot capture). Omit to take the project's own.
   --skip-summaries     Skip waiting for parallel AI summaries in the CLI.
 
 Describing the change (lets each regression be judged against your intent):
@@ -241,9 +257,10 @@ Exit codes:
 
 async function startJob(url: string, options: any) {
     console.log(`🚀 Initializing visual test...`);
-    
+
     const projectId = options.project;
     const failOn = parseFailOn(options['fail-on']);
+    const fidelity = parseFidelity(options.fidelity);
 
     const builder = sdk.test(url);
 
@@ -297,6 +314,10 @@ async function startJob(url: string, options: any) {
         builder.customCss(options['custom-css']);
     }
 
+    if (fidelity) {
+        builder.fidelity(fidelity);
+    }
+
     const runContext = buildRunContext(options);
     if (runContext) {
         builder.withContext(runContext);
@@ -328,7 +349,7 @@ Waiting for completion...
     }, { waitForSummaries: !options['skip-summaries'] });
 
     console.log('\n\n✅ Job Completed.');
-    
+
     const summary = await job.getSummary();
     console.log(`Overall Stability Score: ${summary.overallScore}/100`);
     console.log(`Total Tasks: ${summary.totalUrls}`);
@@ -403,6 +424,9 @@ Matches: ${summary.matchCount}
 Errors: ${summary.errorCount}
 `);
 
+    if (summary.fidelity === 'low') console.log(`Fidelity: low`);
+    if (summary.scopeNote) console.log(`Scope: ${summary.scopeNote}`);
+
     if (summary.regressionCount > 0) {
         console.log('❌ Regressions found:');
         summary.regressions.forEach(printRegression);
@@ -454,4 +478,4 @@ if (require.main === module) {
     main();
 }
 
-export { parseArgs, parseFailOn, parseDecisions, isBlocking, selectBlocking, buildRunContext, printRegression };
+export { parseArgs, parseFailOn, parseDecisions, parseFidelity, isBlocking, selectBlocking, buildRunContext, printRegression };

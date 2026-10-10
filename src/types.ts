@@ -46,6 +46,12 @@ export interface ProjectConfig {
     masks?: string[];
     /** CSS injected before screenshotting, to hide dynamic widgets. Max 4096 characters. */
     customCss?: string;
+    /**
+     * `low`: this project's runs capture in low fidelity unless a run says otherwise. Needs
+     * `baseOrigin` — low fidelity is a check against another live site and stores no
+     * baseline. Absent means high.
+     */
+    fidelity?: 'low';
     /** Presence flag only — the stored credential is never returned. */
     testAuth?: { configured: true };
     /** Presence flag only — the stored credential is never returned. */
@@ -122,6 +128,12 @@ export interface ProjectConfigUpdate {
     masks?: string[];
     /** Max 4096 characters. */
     customCss?: string;
+    /**
+     * The fidelity this project's runs capture at unless a run says otherwise. `high`
+     * (default) clears it. `low` needs the project's `baseOrigin`; it stores no baseline,
+     * so changing it invalidates nothing.
+     */
+    fidelity?: 'low' | 'high';
     /** Credentials for the test origin's environment gate. Pass null to clear. */
     testAuth?: EnvGate | null;
     /** Credentials for the base origin's environment gate. Pass null to clear. */
@@ -470,6 +482,11 @@ export interface PageResult {
      * classifications as absent rather than as "nothing structural changed".
      */
     domAssistSkipReason?: string;
+    /**
+     * `low` on a low-fidelity result: no screenshot was taken, so `currentUrl` and
+     * `baselineUrl` are null, and only content changes count. Absent means high.
+     */
+    fidelity?: 'low';
     /** Pre-signed URL for the stored baseline screenshot. */
     baselineUrl: string | null;
     /** Pre-signed URL for the newly captured screenshot. */
@@ -525,6 +542,13 @@ export interface JobStatus {
     intentProvided?: boolean;
     /** Whether this run compared two live origins or one origin against a stored baseline. */
     comparisonMode?: 'live-vs-live' | 'managed';
+    /** `low` on a low-fidelity run. Absent means high. */
+    fidelity?: 'low';
+    /**
+     * On a low-fidelity run: what it compared and what it did not look at (layout, colour,
+     * the images themselves). Quote it with a quiet result.
+     */
+    scopeNote?: string;
     /** Page-checks the run made, and how many finished. Mirrors `progress`. */
     totalUrls?: number;
     completedCount?: number;
@@ -570,6 +594,13 @@ export interface JobSummary {
      * record; this is a reading of them.
      */
     runSummary: string | null;
+    /** `low` on a low-fidelity run. Absent means high. */
+    fidelity?: 'low';
+    /**
+     * On a low-fidelity run: what it compared and what it did not look at (layout, colour,
+     * the images themselves). Quote it with a quiet result.
+     */
+    scopeNote?: string;
     /** Whole-job roll-up of how the changes line up with the run's stated intent. */
     intentAssessment: IntentAssessment;
     /** The intent this run was given, echoed back. */
