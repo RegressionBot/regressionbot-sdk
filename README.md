@@ -74,6 +74,14 @@ the builder, intent-aware verdicts, environment gates, baseline policies, and
 scheduling. `scheduleHourUtc` needs API 2.7.0 or later — on an older API the
 field is accepted and ignored, and the schedule stays anchored to its first run.
 
+### 2.5.1
+
+- **`ProjectConfig.aiPromptInstructions` and `aiSummaryThreshold` are now marked
+  `@deprecated`.** The API itself has deprecated both — DOM-engine results (2026-09-28 on)
+  never read `aiPromptInstructions`, and are summarised whenever they changed regardless of
+  `aiSummaryThreshold`. Both are still typed and still round-trip; only the doc comments
+  changed.
+
 ### 2.5.0
 
 - **`updateProject()` now returns `baselinesInvalidated`.** The API has always sent it

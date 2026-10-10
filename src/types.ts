@@ -52,9 +52,9 @@ export interface ProjectConfig {
     baseAuth?: { configured: true };
     /** Pages captured in parallel, 1–20. Absent means the API's default of 4. */
     concurrency?: number;
-    /** Extra instructions handed to the model that writes change summaries. Max 1000 characters. */
+    /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. */
     aiPromptInstructions?: string;
-    /** Diff percentage below which a regression is skipped by the AI pass. Defaults to 0.01. */
+    /** @deprecated DOM-engine results (2026-09-28 on) are summarised whenever they changed, so this floor only affects older results. */
     aiSummaryThreshold?: number;
     /**
      * `approved` (default): a person accepts a run and its captures become the baseline.
@@ -131,8 +131,9 @@ export interface ProjectConfigUpdate {
      * take the API's default of 4 — the load lands on the site being captured.
      */
     concurrency?: number;
-    /** Max 1000 characters. */
+    /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. Max 1000 characters. */
     aiPromptInstructions?: string;
+    /** @deprecated DOM-engine results (2026-09-28 on) are summarised whenever they changed, so this floor only affects older results. */
     aiSummaryThreshold?: number;
     baselinePolicy?: BaselinePolicy;
     /**
