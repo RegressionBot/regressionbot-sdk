@@ -143,6 +143,11 @@ export class RegressionBot {
             autoApprove?: boolean;
             /** What this run is testing, used to judge whether changes were intended. */
             runContext?: RunContext;
+            /**
+             * `low`: a fast content-only check instead of today's screenshot capture. Needs
+             * `baseOrigin` and stores no baseline. Omitted, the project's own fidelity is used.
+             */
+            fidelity?: 'low' | 'high';
         } = {}
     ): Promise<JobHandle> {
         const res = await this._request<{ jobId: string }>(
@@ -215,6 +220,7 @@ export class JobBuilder {
         customCss?: string;
         autoApprove?: boolean;
         runContext?: RunContext;
+        fidelity?: 'low' | 'high';
     };
 
     constructor(sdk: RegressionBot, testOrigin: string) {
@@ -309,6 +315,16 @@ export class JobBuilder {
     }
 
     /**
+     * Capture at low fidelity instead of today's screenshot-based check: a fast
+     * content-only comparison, needing `against()`. Stores no baseline. Omit this to
+     * capture at high fidelity (the default).
+     */
+    public fidelity(value: 'low' | 'high'): this {
+        this.manifest.fidelity = value;
+        return this;
+    }
+
+    /**
      * Compiles the manifest and triggers the API.
      */
     public async run(): Promise<JobHandle> {
@@ -332,7 +348,8 @@ export class JobBuilder {
             autoApprove: this.manifest.autoApprove,
             masks: this.manifest.masks,
             customCss: this.manifest.customCss,
-            runContext: this.manifest.runContext
+            runContext: this.manifest.runContext,
+            fidelity: this.manifest.fidelity
         };
 
         const res = await this.sdk._request<{ jobId: string }>('/crawl', 'POST', payload);

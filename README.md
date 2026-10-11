@@ -491,6 +491,27 @@ const summary = await job.getSummary();
 console.log(`Score: ${summary.overallScore}/100`);
 ```
 
+### Low-Fidelity Checks
+
+`low` fidelity trades the screenshot for a fast content-only check — about 3–7s a page
+instead of up to 50s. It reads only text, structure, links and image addresses, never
+layout or colour, needs a base origin to compare against, and stores no baseline.
+
+```typescript
+// One-off, via the builder
+const job = await rb
+  .test(process.env.VERCEL_PREVIEW_URL)
+  .against('https://production-app.com')
+  .fidelity('low')
+  .run();
+
+// Or make it the project's default
+await rb.updateProject('marketing-site-v2', { fidelity: 'low' });
+```
+
+Omit it to capture at `high` fidelity (the default); setting `fidelity: 'high'` on a
+project clears a `low` default. A run's own `fidelity` overrides the project's.
+
 ### Environment Gates
 
 If an origin sits behind basic auth, a bypass header, or a session cookie, store the

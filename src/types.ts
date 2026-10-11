@@ -50,6 +50,8 @@ export interface ProjectConfig {
     testAuth?: { configured: true };
     /** Presence flag only — the stored credential is never returned. */
     baseAuth?: { configured: true };
+    /** `low` when the project captures in low fidelity by default. Absent means high. */
+    fidelity?: 'low';
     /** Pages captured in parallel, 1–20. Absent means the API's default of 4. */
     concurrency?: number;
     /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. */
@@ -126,6 +128,12 @@ export interface ProjectConfigUpdate {
     testAuth?: EnvGate | null;
     /** Credentials for the base origin's environment gate. Pass null to clear. */
     baseAuth?: EnvGate | null;
+    /**
+     * The fidelity this project's runs capture at unless a run says otherwise. `low` needs
+     * the project's `baseOrigin` and stores no baseline, so changing it invalidates nothing.
+     * `high` (default) clears it.
+     */
+    fidelity?: 'low' | 'high';
     /**
      * Pages captured in parallel, 1–20. Rejected outside that range. Leave it unset to
      * take the API's default of 4 — the load lands on the site being captured.
