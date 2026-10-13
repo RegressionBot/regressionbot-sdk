@@ -423,6 +423,10 @@ export class JobHandle {
 
     /**
      * Generate AI summaries on-demand for all regressions in a completed job.
+     *
+     * @deprecated No production endpoint backs this — `POST /job/{jobId}/ai-summary` is not
+     * attached to the API Gateway, so this throws a 404. RegressionBot summaries are generated
+     * automatically and asynchronously; read them from `getSummary()` once the job completes.
      */
     public async generateAiSummary(): Promise<JobAiSummary> {
         return this.sdk._request<JobAiSummary>(`/job/${encodeURIComponent(this.jobId)}/ai-summary`, 'POST');
