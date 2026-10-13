@@ -38,6 +38,20 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.6.0
+
+- **`ProjectConfig.startFailureAlertedAt`** — when the owners were last told a scheduled run
+  could not be started, so a lapsed plan isn't mailed about it again every hour.
+- **`approve()`, `approvePage()` and `rejectPage()` type `warning`, `note` and (one page only)
+  `baselineAdvanced` and the echoed `url`/`variantName`.** The API has always sent these when
+  there was no stored baseline to advance into; only the type was missing them.
+- **`JobStatus.intentProvided` is no longer optional.** The API always computes it; this was a
+  type-accuracy fix, not a behavior change.
+- **`generateAiSummary()` and `JobAiSummary` are now marked `@deprecated`.** There is no
+  production endpoint behind `POST /job/{jobId}/ai-summary` — the AI-summary Lambda is invoked
+  only internally by the run pipeline, so this call has always thrown a 404. Summaries are
+  generated automatically and asynchronously; read them from `getSummary()`.
+
 2.0.0 re-types the SDK against what the API actually returns, taken from the
 orchestrator's implementation rather than from a spec that had drifted in both
 directions. Most of the breakage is caught by the compiler. One is not:
@@ -290,11 +304,11 @@ if (summary.regressions.length > 0) {
     }
   }
 }
-
-// Or trigger RegressionBot summary generation on-demand for a completed job:
-const aiResult = await job.generateAiSummary();
-console.log(`Generated summaries for ${aiResult.summaries.length} regressions.`);
 ```
+
+`generateAiSummary()` is deprecated and does not work against the current API — there is no
+on-demand endpoint. Summaries are always generated automatically; wait for them with
+`{ waitForSummaries: true }` as above.
 
 ### Reading exactly what changed
 
