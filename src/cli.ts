@@ -13,6 +13,7 @@ function formatSummary(items: PageResult['regressionbotSummary']): string {
 
 function printRegression(r: PageResult) {
     console.log(`- ${r.url} [${r.variantName}] (Score: ${r.visualMatchScore.toFixed(2)})`);
+    if (r.fidelity) console.log(`  Fidelity: ${r.fidelity}`);
     if (r.changeGroup) console.log(`  Group: ${r.changeGroup}`);
     if (r.diffUrl) console.log(`  Diff: ${r.diffUrl}`);
     if (r.verdict) {
@@ -211,6 +212,8 @@ Options for <url>:
   --mask <selectors>   Comma-separated CSS selectors to hide (e.g. ".ad,#popup").
   --custom-css <css>   CSS injected before each screenshot (max 4096 chars).
                        Use --custom-css="..." if the CSS starts with '--'.
+  --fidelity <low|high> low: fast content-only check, no screenshots, no baseline.
+                       Needs --against. Defaults to the project's fidelity, or high.
   --skip-summaries     Skip waiting for parallel AI summaries in the CLI.
 
 Describing the change (lets each regression be judged against your intent):
@@ -295,6 +298,13 @@ async function startJob(url: string, options: any) {
 
     if (typeof options['custom-css'] === 'string') {
         builder.customCss(options['custom-css']);
+    }
+
+    if (options.fidelity !== undefined) {
+        if (options.fidelity !== 'low' && options.fidelity !== 'high') {
+            throw new UsageError("--fidelity takes 'low' or 'high'.");
+        }
+        builder.fidelity(options.fidelity);
     }
 
     const runContext = buildRunContext(options);
@@ -402,6 +412,9 @@ Regressions: ${summary.regressionCount}
 Matches: ${summary.matchCount}
 Errors: ${summary.errorCount}
 `);
+
+    if (summary.fidelity) console.log(`Fidelity: ${summary.fidelity}`);
+    if (summary.scopeNote) console.log(`Scope: ${summary.scopeNote}`);
 
     if (summary.regressionCount > 0) {
         console.log('❌ Regressions found:');

@@ -52,6 +52,8 @@ export interface ProjectConfig {
     baseAuth?: { configured: true };
     /** Pages captured in parallel, 1–20. Absent means the API's default of 4. */
     concurrency?: number;
+    /** `low` when this project's runs capture in low fidelity by default (docs/specs/lofi-capture.md). Absent means `high`. */
+    fidelity?: 'low';
     /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. */
     aiPromptInstructions?: string;
     /** @deprecated DOM-engine results (2026-09-28 on) are summarised whenever they changed, so this floor only affects older results. */
@@ -136,6 +138,13 @@ export interface ProjectConfigUpdate {
      * take the API's default of 4 — the load lands on the site being captured.
      */
     concurrency?: number;
+    /**
+     * The fidelity this project's runs capture at unless a run says otherwise
+     * (docs/specs/lofi-capture.md). `high` (default) clears it. `low` needs the
+     * project's `baseOrigin` set and stores no baseline, so changing it never
+     * invalidates stored baselines.
+     */
+    fidelity?: 'low' | 'high';
     /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. Max 1000 characters. */
     aiPromptInstructions?: string;
     /** @deprecated DOM-engine results (2026-09-28 on) are summarised whenever they changed, so this floor only affects older results. */
@@ -476,6 +485,11 @@ export interface PageResult {
      * classifications as absent rather than as "nothing structural changed".
      */
     domAssistSkipReason?: string;
+    /**
+     * `low` on a low-fidelity result: no screenshot was taken, so `currentUrl` and
+     * `baselineUrl` are null, and only content changes count. Absent means `high`.
+     */
+    fidelity?: 'low';
     /** Pre-signed URL for the stored baseline screenshot. */
     baselineUrl: string | null;
     /** Pre-signed URL for the newly captured screenshot. */
@@ -531,6 +545,13 @@ export interface JobStatus {
     intentProvided: boolean;
     /** Whether this run compared two live origins or one origin against a stored baseline. */
     comparisonMode?: 'live-vs-live' | 'managed';
+    /** `low` on a low-fidelity run (docs/specs/lofi-capture.md). Absent means `high`. */
+    fidelity?: 'low';
+    /**
+     * On a low-fidelity run: what it compared and what it did not look at (layout,
+     * colour, the images themselves). Quote it with a quiet result.
+     */
+    scopeNote?: string;
     /** Page-checks the run made, and how many finished. Mirrors `progress`. */
     totalUrls?: number;
     completedCount?: number;
@@ -576,6 +597,13 @@ export interface JobSummary {
      * record; this is a reading of them.
      */
     runSummary: string | null;
+    /** `low` on a low-fidelity run. Absent means `high`. */
+    fidelity?: 'low';
+    /**
+     * On a low-fidelity run: what it compared and what it did not look at (layout,
+     * colour, the images themselves). Quote it with a quiet result.
+     */
+    scopeNote?: string;
     /** Whole-job roll-up of how the changes line up with the run's stated intent. */
     intentAssessment: IntentAssessment;
     /** The intent this run was given, echoed back. */

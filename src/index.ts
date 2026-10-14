@@ -143,6 +143,12 @@ export class RegressionBot {
             autoApprove?: boolean;
             /** What this run is testing, used to judge whether changes were intended. */
             runContext?: RunContext;
+            /**
+             * `high` (default): today's capture, with screenshots. `low`: a fast
+             * content-only check (docs/specs/lofi-capture.md) that needs `baseOrigin` and
+             * stores no baseline. Omitted, the project's own fidelity is used.
+             */
+            fidelity?: 'low' | 'high';
         } = {}
     ): Promise<JobHandle> {
         const res = await this._request<{ jobId: string }>(
@@ -215,6 +221,7 @@ export class JobBuilder {
         customCss?: string;
         autoApprove?: boolean;
         runContext?: RunContext;
+        fidelity?: 'low' | 'high';
     };
 
     constructor(sdk: RegressionBot, testOrigin: string) {
@@ -309,6 +316,17 @@ export class JobBuilder {
     }
 
     /**
+     * `low`: a fast content-only check (docs/specs/lofi-capture.md), reading text,
+     * structure, links and image addresses but not layout or colour — needs `.against()`
+     * and stores no baseline. Leave unset to take the project's own fidelity, or `high`
+     * with no project.
+     */
+    public fidelity(value: 'low' | 'high'): this {
+        this.manifest.fidelity = value;
+        return this;
+    }
+
+    /**
      * Compiles the manifest and triggers the API.
      */
     public async run(): Promise<JobHandle> {
@@ -332,7 +350,8 @@ export class JobBuilder {
             autoApprove: this.manifest.autoApprove,
             masks: this.manifest.masks,
             customCss: this.manifest.customCss,
-            runContext: this.manifest.runContext
+            runContext: this.manifest.runContext,
+            fidelity: this.manifest.fidelity
         };
 
         const res = await this.sdk._request<{ jobId: string }>('/crawl', 'POST', payload);

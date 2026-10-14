@@ -597,6 +597,32 @@ console.log(project.environment); // 'staging'
 A label only: 1–24 letters, digits, spaces or hyphens, stored lower-case. It never resets
 baselines and never changes a run. Pass `null` or an empty string to remove it.
 
+### Low-Fidelity Checks
+
+A `low` fidelity run skips screenshots for a fast content-only check — about 3–7 seconds a
+page instead of up to 50 — reading only text, structure, links and image addresses, not
+layout or colour. It needs a `baseOrigin` to compare against and stores no baseline.
+
+```typescript
+const job = await rb.test('https://staging.myapp.com')
+  .against('https://myapp.com')
+  .fidelity('low')
+  .run();
+
+const summary = await job.getSummary();
+console.log(summary.fidelity, summary.scopeNote); // 'low', what it did not look at
+```
+
+Set it on a saved project to make it the default for that project's runs — a run that
+passes its own `fidelity` still overrides it:
+
+```typescript
+await rb.updateProject('marketing-site-v2', { fidelity: 'low' });
+```
+
+A low-fidelity result's `currentUrl` and `baselineUrl` are null; `diffUrl` opens the
+rebuilt page instead. The CLI takes the same option: `--fidelity low|high`.
+
 ### Reconnecting to an Existing Job
 
 If you have a job ID from a previous run (e.g., stored in CI state), you can attach to it without re-running the test:
