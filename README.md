@@ -420,6 +420,25 @@ const job = await rb
   .run();
 ```
 
+### Low-Fidelity Checks
+
+`.fidelity('low')` on a run, or `fidelity: 'low'` on a project, trades screenshots for a
+fast content-only check — about 3-7s a page instead of up to 50s. No screenshot is taken;
+only content changes (text, structure, links, image addresses) count, not layout or color.
+Omit it to use the project's own fidelity, or `'high'` for today's full capture.
+
+```typescript
+const job = await rb
+  .test('https://preview.myapp.com')
+  .forProject('my-app-web')
+  .fidelity('low')
+  .run();
+```
+
+A low-fidelity project needs `baseOrigin` set and stores no baseline, so changing its
+fidelity never invalidates one. On a changed page, `currentUrl`/`baselineUrl` are pictures
+drawn from the two page copies rather than real screenshots; they're null otherwise.
+
 ### Progress Tracking
 
 `waitForCompletion` returns on `COMPLETED`, `APPROVED` or `RESOLVED`, and throws on

@@ -52,6 +52,8 @@ export interface ProjectConfig {
     baseAuth?: { configured: true };
     /** Pages captured in parallel, 1–20. Absent means the API's default of 4. */
     concurrency?: number;
+    /** `low` when the project captures in low fidelity by default. Absent means high. */
+    fidelity?: 'low';
     /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. */
     aiPromptInstructions?: string;
     /** @deprecated DOM-engine results (2026-09-28 on) are summarised whenever they changed, so this floor only affects older results. */
@@ -136,6 +138,13 @@ export interface ProjectConfigUpdate {
      * take the API's default of 4 — the load lands on the site being captured.
      */
     concurrency?: number;
+    /**
+     * The fidelity this project's runs capture at unless a run says otherwise
+     * (https://regressionbot.com/docs/workflows/quick-check). `high` (default) clears it. `low`
+     * needs the project's `baseOrigin`. Low fidelity stores no baseline, so changing it
+     * invalidates nothing.
+     */
+    fidelity?: 'low' | 'high';
     /** @deprecated Fed only the screenshot-reading AI, which DOM-engine results (2026-09-28 on) never reach. No longer in the dashboard. Max 1000 characters. */
     aiPromptInstructions?: string;
     /** @deprecated DOM-engine results (2026-09-28 on) are summarised whenever they changed, so this floor only affects older results. */
@@ -476,9 +485,18 @@ export interface PageResult {
      * classifications as absent rather than as "nothing structural changed".
      */
     domAssistSkipReason?: string;
+    /**
+     * `low` on a low-fidelity result: no screenshot was taken, and only content changes count.
+     * `currentUrl` and `baselineUrl` are pictures drawn from the page copies on a changed page,
+     * and null otherwise. Absent means high.
+     */
+    fidelity?: 'low';
     /** Pre-signed URL for the stored baseline screenshot. */
     baselineUrl: string | null;
-    /** Pre-signed URL for the newly captured screenshot. */
+    /**
+     * Pre-signed URL for the newly captured screenshot. On a low-fidelity result, a picture
+     * drawn from the page copy for a changed page, and null otherwise.
+     */
     currentUrl: string | null;
     /**
      * The page's inspect link. Fetched, it returns the side-by-side annotated diff image;
@@ -531,6 +549,10 @@ export interface JobStatus {
     intentProvided: boolean;
     /** Whether this run compared two live origins or one origin against a stored baseline. */
     comparisonMode?: 'live-vs-live' | 'managed';
+    /** `low` on a low-fidelity run (https://regressionbot.com/docs/workflows/quick-check). Absent means high. */
+    fidelity?: 'low';
+    /** On a low-fidelity run: what it compared and what it did not look at (layout, color, the images themselves). Quote it with a quiet result. */
+    scopeNote?: string;
     /** Page-checks the run made, and how many finished. Mirrors `progress`. */
     totalUrls?: number;
     completedCount?: number;
@@ -548,6 +570,10 @@ export interface JobSummary {
     status: 'COMPLETED' | 'APPROVED' | 'RESOLVED' | 'FAILED';
     summaryStatus: SummaryStatus;
     error: string | null;
+    /** `low` on a low-fidelity run. Absent means high. */
+    fidelity?: 'low';
+    /** On a low-fidelity run: what it compared and what it did not look at (layout, color, the images themselves). Quote it with a quiet result. */
+    scopeNote?: string;
     totalUrls: number;
     completedCount: number;
     /**
