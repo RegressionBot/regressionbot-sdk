@@ -38,6 +38,20 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.7.0
+
+Needs API 2.10.0 or later for `fidelity`/`scopeNote` to be populated. On an older API these
+fields are simply absent.
+
+- **`fidelity`**, on a project (`ProjectConfig`, `ProjectConfigUpdate`), a run's options
+  (`runProject()`, `JobBuilder.fidelity()`) and a result (`PageResult`, `JobStatus`,
+  `JobSummary`). `'low'` is a fast content-only check against another live site — no
+  screenshot, no stored baseline — [about 3-7s a page instead of up to 50s](https://regressionbot.com/docs/workflows/quick-check).
+  `'high'` (the default) is today's full capture. Omitted on a run, the project's own
+  fidelity is used.
+- **`scopeNote`**, on `JobStatus` and `JobSummary`: on a low-fidelity run, what it compared
+  and what it did not look at. Quote it with a quiet result.
+
 ### 2.6.0
 
 - **`ProjectConfig.startFailureAlertedAt`** — when the owners were last told a scheduled run

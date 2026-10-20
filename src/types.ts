@@ -46,6 +46,8 @@ export interface ProjectConfig {
     masks?: string[];
     /** CSS injected before screenshotting, to hide dynamic widgets. Max 4096 characters. */
     customCss?: string;
+    /** `low` when the project captures in low fidelity by default. Absent means high. */
+    fidelity?: 'low';
     /** Presence flag only — the stored credential is never returned. */
     testAuth?: { configured: true };
     /** Presence flag only — the stored credential is never returned. */
@@ -127,6 +129,12 @@ export interface ProjectConfigUpdate {
     masks?: string[];
     /** Max 4096 characters. */
     customCss?: string;
+    /**
+     * The fidelity this project's runs capture at unless a run says otherwise. `high`
+     * (default) clears it. `low` needs the project's `baseOrigin`. Low fidelity stores no
+     * baseline, so changing it invalidates nothing.
+     */
+    fidelity?: 'low' | 'high';
     /** Credentials for the test origin's environment gate. Pass null to clear. */
     testAuth?: EnvGate | null;
     /** Credentials for the base origin's environment gate. Pass null to clear. */
@@ -393,6 +401,12 @@ export interface PageResult {
     url: string;
     /** Whether the capture and comparison succeeded. */
     status: 'SUCCESS' | 'ERROR';
+    /**
+     * `low` on a low-fidelity result: no screenshot was taken, and only content changes
+     * count. `currentUrl` and `baselineUrl` are pictures drawn from the page copies on a
+     * changed page, and null otherwise. Absent means high.
+     */
+    fidelity?: 'low';
     /** Device variant tested (e.g. "Desktop Chrome", "iPhone 12"). */
     variantName: string;
     /**
@@ -531,6 +545,10 @@ export interface JobStatus {
     intentProvided: boolean;
     /** Whether this run compared two live origins or one origin against a stored baseline. */
     comparisonMode?: 'live-vs-live' | 'managed';
+    /** `low` on a low-fidelity run. Absent means high. */
+    fidelity?: 'low';
+    /** On a low-fidelity run: what it compared and what it did not look at. Quote it with a quiet result. */
+    scopeNote?: string;
     /** Page-checks the run made, and how many finished. Mirrors `progress`. */
     totalUrls?: number;
     completedCount?: number;
@@ -544,6 +562,10 @@ export interface JobSummary {
     environment?: string;
     /** Live-vs-live runs only: the environment of the base origin. Absent otherwise. */
     baseEnvironment?: string;
+    /** `low` on a low-fidelity run. Absent means high. */
+    fidelity?: 'low';
+    /** On a low-fidelity run: what it compared and what it did not look at. Quote it with a quiet result. */
+    scopeNote?: string;
     /** getSummary() throws until the job reaches one of these. */
     status: 'COMPLETED' | 'APPROVED' | 'RESOLVED' | 'FAILED';
     summaryStatus: SummaryStatus;
