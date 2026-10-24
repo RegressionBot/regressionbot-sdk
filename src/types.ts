@@ -592,12 +592,18 @@ export interface JobSummary {
     /** Pages that failed to capture or compare. */
     errors: Array<{ url: string; variantName: string; errorMessage: string }>;
     /**
-     * An AI summary of the whole run, two or three sentences, written once when the run
-     * finished from the exact edits in `regressions` (the same text opens the scheduled-run
-     * email). Null when nothing changed or none could be written. The changes are the
-     * record; this is a reading of them.
+     * An AI summary of the whole run as one paragraph, written once when the run finished
+     * from the exact edits in `regressions`. Null when nothing changed or none could be
+     * written. The changes are the record; this is a reading of them.
      */
     runSummary: string | null;
+    /**
+     * The same summary as a list: one short sentence per change, at most four, the change
+     * on the most pages first. This is what opens the scheduled-run email and the
+     * dashboard's run view. Null exactly when `runSummary` is. A run summarized before this
+     * field existed has one point, its paragraph.
+     */
+    runSummaryPoints: string[] | null;
     /** Whole-job roll-up of how the changes line up with the run's stated intent. */
     intentAssessment: IntentAssessment;
     /** The intent this run was given, echoed back. */
