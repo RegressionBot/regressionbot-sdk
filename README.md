@@ -38,6 +38,15 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.8.0
+
+- **`JobSummary.runSummaryPoints`** (`string[] | null`) — the run summary as a list, one
+  short sentence per change, at most four, the change on the most pages first. This is what
+  the scheduled-run email and the dashboard's run view show. Null exactly when `runSummary`
+  is. A run summarized before this field existed has one point, its paragraph.
+- **`JobSummary.runSummary`** is now one paragraph rather than two or three sentences; its
+  doc comment is updated to match. No type change.
+
 ### 2.7.0
 
 Needs API 2.10.0 or later for `fidelity`/`scopeNote` to be populated. On an older API these
