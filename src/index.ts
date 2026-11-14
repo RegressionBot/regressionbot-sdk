@@ -27,7 +27,13 @@ import {
     Change,
     ChangeType,
     StyleDelta,
-    ChangeBox
+    ChangeBox,
+    GateReason,
+    AssessmentStatus,
+    ResultAssessment,
+    RunCoverage,
+    UsageBlock,
+    QuotaExceededBody
 } from './types';
 import {
     sanitizeFilename,
@@ -67,7 +73,13 @@ export type {
     Change,
     ChangeType,
     StyleDelta,
-    ChangeBox
+    ChangeBox,
+    GateReason,
+    AssessmentStatus,
+    ResultAssessment,
+    RunCoverage,
+    UsageBlock,
+    QuotaExceededBody
 };
 
 export class RegressionBot {
@@ -151,12 +163,12 @@ export class RegressionBot {
             fidelity?: 'low' | 'high';
         } = {}
     ): Promise<JobHandle> {
-        const res = await this._request<{ jobId: string }>(
+        const res = await this._request<{ jobId: string; usage?: UsageBlock }>(
             `/project/${encodeURIComponent(projectName)}/run`,
             'POST',
             options
         );
-        return new JobHandle(this, res.jobId);
+        return new JobHandle(this, res.jobId, res.usage);
     }
 
     /**
@@ -353,18 +365,21 @@ export class JobBuilder {
             fidelity: this.manifest.fidelity
         };
 
-        const res = await this.sdk._request<{ jobId: string }>('/crawl', 'POST', payload);
-        return new JobHandle(this.sdk, res.jobId);
+        const res = await this.sdk._request<{ jobId: string; usage?: UsageBlock }>('/crawl', 'POST', payload);
+        return new JobHandle(this.sdk, res.jobId, res.usage);
     }
 }
 
 export class JobHandle {
     private sdk: RegressionBot;
     public jobId: string;
+    /** What this run was charged, from the start-run response. Present when the usage meter could be read. */
+    public usage?: UsageBlock;
 
-    constructor(sdk: RegressionBot, jobId: string) {
+    constructor(sdk: RegressionBot, jobId: string, usage?: UsageBlock) {
         this.sdk = sdk;
         this.jobId = jobId;
+        this.usage = usage;
     }
 
     public async getStatus(): Promise<JobStatus> {

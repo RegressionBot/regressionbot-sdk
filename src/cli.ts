@@ -18,6 +18,9 @@ function printRegression(r: PageResult) {
     if (r.verdict) {
         console.log(`  Verdict: ${r.verdict.decision} (confidence ${r.verdict.minConfidence.toFixed(2)}-${r.verdict.avgConfidence.toFixed(2)})`);
     }
+    if (r.assessment && r.assessment.status !== 'assessed') {
+        console.log(`  Assessment: ${r.assessment.status}${r.assessment.reason ? ` (${r.assessment.reason})` : ''}`);
+    }
     const summary = formatSummary(r.regressionbotSummary);
     if (summary) console.log(`  Summary: ${summary}`);
 }
@@ -35,6 +38,14 @@ function printIntent(summary: JobSummary) {
     if (!ia || !ia.intentProvided) return;
     console.log(`\n🧭 Intent: ${ia.summary}`);
     console.log(`   bugs: ${ia.bugCount}, intentional: ${ia.intentionalCount}, noise: ${ia.noiseCount}, needs review: ${ia.needsReviewCount}`);
+    if (ia.reasons && ia.reasons.length > 0) {
+        console.log(`   reasons: ${ia.reasons.join(', ')}`);
+    }
+}
+
+function printUsage(usage: JobStatus['usage'] | JobSummary['usage']) {
+    if (!usage) return;
+    console.log(`💳 Usage: ${usage.charged} charged, ${usage.usedThisPeriod}/${usage.limit} used this period`);
 }
 
 type FailOn = 'any' | 'unintended';
@@ -312,6 +323,7 @@ async function startJob(url: string, options: any) {
     const job = await builder.run();
 
     console.log(`✅ Job started! ID: ${job.jobId}`);
+    printUsage(job.usage);
     console.log(`📊 Project: ${projectId}`);
     console.log(`📱 Matrix: ${typeof options.on === 'string' ? options.on : 'Desktop Chrome (default)'}`);
     if (options.scan) {
@@ -334,12 +346,21 @@ Waiting for completion...
     console.log(`Total Tasks: ${summary.totalUrls}`);
     console.log(`Regressions: ${summary.regressionCount}`);
     console.log(`New Baselines: ${summary.newBaselineCount}`);
+    if (summary.newPageCount > 0) console.log(`New Pages: ${summary.newPageCount}`);
     console.log(`Errors: ${summary.errorCount}`);
+    printUsage(summary.usage);
 
     if (summary.newBaselineCount > 0) {
         console.log('\n✨ New Baselines Created:');
         summary.newBaselines.forEach((nb: any) => {
             console.log(`- ${nb.url} [${nb.variantName}]`);
+        });
+    }
+
+    if (summary.newPageCount > 0) {
+        console.log('\n🆕 New Pages:');
+        summary.newPages.forEach((np: any) => {
+            console.log(`- ${np.url} [${np.variantName}]${np.note ? `: ${np.note}` : ''}`);
         });
     }
 
@@ -400,8 +421,10 @@ Execution Time: ${summary.executionTime}s
 Total Tasks: ${summary.totalUrls}
 Regressions: ${summary.regressionCount}
 Matches: ${summary.matchCount}
+New Pages: ${summary.newPageCount}
 Errors: ${summary.errorCount}
 `);
+    printUsage(summary.usage);
 
     if (summary.regressionCount > 0) {
         console.log('❌ Regressions found:');

@@ -38,6 +38,28 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### Unreleased
+
+- **`IntentAssessment.reasons`** (`GateReason[]`) and **`IntentAssessment.coverage`**
+  (`RunCoverage`) — every condition behind `decision`, worst first, and what the run
+  compared and how much of it the verdict covers. Both optional; absent on an older API.
+- **`PageResult.assessment`** (`ResultAssessment`) — where a changed page stands with the
+  verdict, including why it has none (`pending`, `failed` with a `reason`, `skipped`,
+  `unassessed`, or `not_judged`). Only on `JobSummary.regressions`; absent on `matches` and
+  on `JobStatus.results`.
+- **`PageResult.isNewPage`** — true when the base answered 404 or 410 while the head
+  loaded: a new page, not a failure and not a regression.
+- **`JobSummary.newPageCount`** and **`JobSummary.newPages`** — the count and list of pages
+  described above.
+- **`UsageBlock`**, now typed and attached as `usage` to `JobStatus`, `JobSummary`, and the
+  `JobHandle` returned by `.run()` / `runProject()` (`JobHandle.usage`) — what a run was
+  charged and where the org's month stands. Present when the usage meter could be read.
+- **`QuotaExceededBody`** — the shape of the 402 response when a run does not fit the
+  org's allowance. `run()` and `runProject()` still throw a plain `Error` whose message is
+  this JSON; the type is for a caller reading the response itself.
+- CLI: `summary`/`status`/the quick-test command now print usage and new-page counts when
+  present.
+
 ### 2.8.0
 
 - **`JobSummary.runSummaryPoints`** (`string[] | null`) — the run summary as a list, one
@@ -406,6 +428,9 @@ const summary = await job.getSummary();
 // Whole-job roll-up: does everything that changed line up with the stated intent?
 console.log(summary.intentAssessment?.summary);
 console.log(`Bugs: ${summary.intentAssessment?.bugCount}`);
+// Why a 'review' or 'fail' decision, worst first — e.g. a page that needs a person vs. one
+// that was never assessed.
+console.log(summary.intentAssessment?.reasons);
 
 // Per-result verdict, plus the per-region verdicts behind it
 for (const r of summary.regressions) {
