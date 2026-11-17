@@ -38,6 +38,13 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.9.0
+
+- **`approve()`'s `warning` can now be `'BASELINE_OUTDATED'`**, alongside `'NO_BASELINE'`. A
+  job-level approve returns it when some pages were skipped because another job updated their
+  baseline first; `conflictedUrls` lists them and `message` says how many advanced. The API has
+  always returned this; the type only knew `'NO_BASELINE'`.
+
 ### 2.8.0
 
 - **`JobSummary.runSummaryPoints`** (`string[] | null`) — the run summary as a list, one

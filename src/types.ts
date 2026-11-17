@@ -665,8 +665,10 @@ export interface ApproveResult {
     conflictedUrls?: string[];
     /** One page only: what approvePage or rejectPage wrote on that page's result. */
     triageStatus?: 'APPROVED' | 'REJECTED';
-    /** Set when there was no stored baseline to advance into — the decision was still recorded. */
-    warning?: 'NO_BASELINE';
+    /** `'NO_BASELINE'`: there was no stored baseline to advance into — the decision was still recorded.
+     * `'BASELINE_OUTDATED'`: job-level approve skipped some pages because another job updated their
+     * baseline first; they are listed in `conflictedUrls`. */
+    warning?: 'NO_BASELINE' | 'BASELINE_OUTDATED';
     /** Explains `warning` when present. */
     note?: string;
     /** One page only, and only when `warning` is `'NO_BASELINE'`: always `false`. */
