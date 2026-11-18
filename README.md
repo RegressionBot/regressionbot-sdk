@@ -38,6 +38,35 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.10.0
+
+Needs the current production API for these fields to be populated. On an older API they are simply absent.
+
+- **`approve()`'s `warning` can now be `'PREVIEW_RUN'`.** A job whose origin differs from its
+  project's `testOrigin` (a PR preview) has the decision recorded (`triageStatus`, `triagedBy`)
+  but copies nothing to the shared baseline; `note` explains why.
+- **`intentAssessment.reasons`** (`GateReason[]`) — every condition behind `decision`, worst
+  first, empty on a clean pass. Tells a `review` caused by a page that needs a person apart
+  from one caused by pages that failed or were never assessed.
+- **`intentAssessment.coverage`** (`RunCoverage`) — what the run compared and how much of it
+  the verdict covers, including a reason → count breakdown for every unassessed page.
+- **A regression's `assessment`** (`ResultAssessment`) — where that page stands with the
+  verdict, including why it has none (`status`, `reason`). Present only on a regression from
+  `getSummary()`, never on a match and never on a result from `getStatus()`.
+- **`isNewPage`**, on a result — true when the base answered 404/410 while the head loaded: a
+  new page, not a failure and not a regression.
+- **`JobSummary.newPageCount`** and **`JobSummary.newPages`** — the same new-page pages,
+  counted and listed, the way `newBaselineCount`/`newBaselines` already are.
+- **`JobSummary.changeClusters`** (`ChangeCluster[]`) — an edit that repeats on two or more
+  changed pages, listed once with every page it reaches. Empty when no edit repeats;
+  `regressions[].changes` stays the full per-page record.
+- **`usage`** (`UsageBlock`), on `JobStatus`, `JobSummary`, and now also on the `JobHandle`
+  returned by `.run()` and `runProject()` — comparisons charged to the run and where the
+  month's meter stands. `.run()`/`runProject()` previously discarded every field but `jobId`.
+- **`QuotaExceededBody`** — the shape of the 402 a run gets when it does not fit the plan's
+  allowance, exported for callers that want to parse the thrown error's message themselves.
+  `run()`/`runProject()` still just throw a plain `Error`; no error-handling behaviour change.
+
 ### 2.9.0
 
 - **`approve()`'s `warning` can now be `'BASELINE_OUTDATED'`**, alongside `'NO_BASELINE'`. A
@@ -413,6 +442,7 @@ const summary = await job.getSummary();
 // Whole-job roll-up: does everything that changed line up with the stated intent?
 console.log(summary.intentAssessment?.summary);
 console.log(`Bugs: ${summary.intentAssessment?.bugCount}`);
+// What's behind a `review` or `fail`, worst first (needs API 2.10.0+): summary.intentAssessment?.reasons
 
 // Per-result verdict, plus the per-region verdicts behind it
 for (const r of summary.regressions) {
