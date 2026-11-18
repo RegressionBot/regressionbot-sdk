@@ -27,7 +27,15 @@ import {
     Change,
     ChangeType,
     StyleDelta,
-    ChangeBox
+    ChangeBox,
+    UsageBlock,
+    QuotaExceededBody,
+    GateReason,
+    AssessmentStatus,
+    ResultAssessment,
+    RunCoverage,
+    ChangeCluster,
+    ChangeClusterPage
 } from './types';
 import {
     sanitizeFilename,
@@ -67,7 +75,15 @@ export type {
     Change,
     ChangeType,
     StyleDelta,
-    ChangeBox
+    ChangeBox,
+    UsageBlock,
+    QuotaExceededBody,
+    GateReason,
+    AssessmentStatus,
+    ResultAssessment,
+    RunCoverage,
+    ChangeCluster,
+    ChangeClusterPage
 };
 
 export class RegressionBot {
@@ -151,12 +167,12 @@ export class RegressionBot {
             fidelity?: 'low' | 'high';
         } = {}
     ): Promise<JobHandle> {
-        const res = await this._request<{ jobId: string }>(
+        const res = await this._request<{ jobId: string; usage?: UsageBlock }>(
             `/project/${encodeURIComponent(projectName)}/run`,
             'POST',
             options
         );
-        return new JobHandle(this, res.jobId);
+        return new JobHandle(this, res.jobId, res.usage);
     }
 
     /**
@@ -353,18 +369,21 @@ export class JobBuilder {
             fidelity: this.manifest.fidelity
         };
 
-        const res = await this.sdk._request<{ jobId: string }>('/crawl', 'POST', payload);
-        return new JobHandle(this.sdk, res.jobId);
+        const res = await this.sdk._request<{ jobId: string; usage?: UsageBlock }>('/crawl', 'POST', payload);
+        return new JobHandle(this.sdk, res.jobId, res.usage);
     }
 }
 
 export class JobHandle {
     private sdk: RegressionBot;
     public jobId: string;
+    /** What starting this job cost, when the usage meter could be read. Needs API 2.10.0 or later. */
+    public usage?: UsageBlock;
 
-    constructor(sdk: RegressionBot, jobId: string) {
+    constructor(sdk: RegressionBot, jobId: string, usage?: UsageBlock) {
         this.sdk = sdk;
         this.jobId = jobId;
+        this.usage = usage;
     }
 
     public async getStatus(): Promise<JobStatus> {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { RegressionBot } from './index';
 import { sanitizeFilename } from './security';
-import { JobStatus, JobSummary, PageResult, RunContext, VerdictDecision } from './types';
+import { JobStatus, JobSummary, PageResult, RunContext, VerdictDecision, UsageBlock, ChangeCluster } from './types';
 import * as path from 'path';
 
 function formatSummary(items: PageResult['regressionbotSummary']): string {
@@ -18,8 +18,25 @@ function printRegression(r: PageResult) {
     if (r.verdict) {
         console.log(`  Verdict: ${r.verdict.decision} (confidence ${r.verdict.minConfidence.toFixed(2)}-${r.verdict.avgConfidence.toFixed(2)})`);
     }
+    if (r.assessment && r.assessment.status !== 'assessed') {
+        console.log(`  Assessment: ${r.assessment.status}${r.assessment.reason ? ` (${r.assessment.reason})` : ''}`);
+    }
     const summary = formatSummary(r.regressionbotSummary);
     if (summary) console.log(`  Summary: ${summary}`);
+}
+
+function printUsage(usage: UsageBlock | undefined) {
+    if (!usage) return;
+    console.log(`\n💳 Usage: ${usage.charged} charged, ${usage.usedThisPeriod}/${usage.limit} used this period.`);
+}
+
+function printChangeClusters(clusters: ChangeCluster[] | undefined) {
+    if (!clusters || clusters.length === 0) return;
+    console.log('\n🔁 Repeated across pages:');
+    clusters.forEach(c => {
+        const label = c.change.label ? `${c.change.element} (${c.change.label})` : c.change.element;
+        console.log(`- ${label}: ${c.pageCount} pages`);
+    });
 }
 
 /**
@@ -35,6 +52,9 @@ function printIntent(summary: JobSummary) {
     if (!ia || !ia.intentProvided) return;
     console.log(`\n🧭 Intent: ${ia.summary}`);
     console.log(`   bugs: ${ia.bugCount}, intentional: ${ia.intentionalCount}, noise: ${ia.noiseCount}, needs review: ${ia.needsReviewCount}`);
+    if (ia.reasons && ia.reasons.length > 0) {
+        console.log(`   reasons: ${ia.reasons.join(', ')}`);
+    }
 }
 
 type FailOn = 'any' | 'unintended';
@@ -312,6 +332,7 @@ async function startJob(url: string, options: any) {
     const job = await builder.run();
 
     console.log(`✅ Job started! ID: ${job.jobId}`);
+    printUsage(job.usage);
     console.log(`📊 Project: ${projectId}`);
     console.log(`📱 Matrix: ${typeof options.on === 'string' ? options.on : 'Desktop Chrome (default)'}`);
     if (options.scan) {
@@ -334,12 +355,20 @@ Waiting for completion...
     console.log(`Total Tasks: ${summary.totalUrls}`);
     console.log(`Regressions: ${summary.regressionCount}`);
     console.log(`New Baselines: ${summary.newBaselineCount}`);
+    console.log(`New Pages: ${summary.newPageCount}`);
     console.log(`Errors: ${summary.errorCount}`);
 
     if (summary.newBaselineCount > 0) {
         console.log('\n✨ New Baselines Created:');
         summary.newBaselines.forEach((nb: any) => {
             console.log(`- ${nb.url} [${nb.variantName}]`);
+        });
+    }
+
+    if (summary.newPageCount > 0) {
+        console.log('\n🆕 New Pages (nothing to compare):');
+        summary.newPages.forEach((np: any) => {
+            console.log(`- ${np.url} [${np.variantName}]`);
         });
     }
 
@@ -361,7 +390,9 @@ Waiting for completion...
         }
     }
 
+    printChangeClusters(summary.changeClusters);
     printIntent(summary);
+    printUsage(summary.usage);
 
     // Reported even when there are regressions. These used to be hidden behind an
     // else-if, so a run with both showed only the regressions and exited 1 for what
@@ -408,7 +439,16 @@ Errors: ${summary.errorCount}
         summary.regressions.forEach(printRegression);
     }
 
+    if (summary.newPageCount > 0) {
+        console.log('\n🆕 New Pages (nothing to compare):');
+        summary.newPages.forEach((np: any) => {
+            console.log(`- ${np.url} [${np.variantName}]`);
+        });
+    }
+
+    printChangeClusters(summary.changeClusters);
     printIntent(summary);
+    printUsage(summary.usage);
 
     const doDownload = options.download || options['download-full'];
     if (doDownload) {
