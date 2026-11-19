@@ -38,6 +38,16 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.10.1
+
+Documentation only; no change to any type's shape or any method.
+
+- **`ResultAssessment.reason` can be `deferred`**: the verdict pass ran short of time for that page
+  and will retry it.
+- **`autoApprove` with a `runContext`**: auto-approve fires only if every changed page has an AI
+  verdict (a page skipped under `aiSummaryThreshold` counts as having none); otherwise the run is
+  held for review.
+
 ### 2.10.0
 
 Needs the current production API for these fields to be populated. On an older API they are simply absent.
@@ -496,7 +506,7 @@ const status = await job.waitForCompletion(3000, (s) => {
 
 ### Auto-Approval
 
-Set `.autoApprove()` to automatically promote screenshots to baselines when the job completes. Useful for scheduled health checks or first-run baseline seeding.
+Set `.autoApprove()` to automatically promote screenshots to baselines when the job completes. Useful for scheduled health checks or first-run baseline seeding. When the run carries a `runContext`, auto-approve fires only if every changed page has an AI verdict (a page skipped under `aiSummaryThreshold` counts as having none); otherwise the run is held for review.
 
 ```typescript
 const job = await rb
