@@ -156,6 +156,12 @@ export class RegressionBot {
             /** CSS injected before screenshotting. Max 4096 characters. */
             customCss?: string;
             concurrency?: number;
+            /**
+             * Promote this run's captures to baselines without review. When the run carries a
+             * `runContext`, auto-approve fires only if every changed page has an AI verdict (a
+             * page skipped under the project's AI summary threshold counts as having none);
+             * otherwise the run is held for review.
+             */
             autoApprove?: boolean;
             /** What this run is testing, used to judge whether changes were intended. */
             runContext?: RunContext;
@@ -302,6 +308,12 @@ export class JobBuilder {
         return this;
     }
 
+    /**
+     * Promote this run's captures to baselines without review. When the run carries a
+     * `runContext` (see `withContext`), auto-approve fires only if every changed page has
+     * an AI verdict (a page skipped under the project's AI summary threshold counts as
+     * having none); otherwise the run is held for review.
+     */
     public autoApprove(val: boolean = true): this {
         this.manifest.autoApprove = val;
         return this;

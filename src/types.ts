@@ -771,9 +771,9 @@ export interface ResultAssessment {
     status: AssessmentStatus;
     /**
      * Why, when status is not `assessed`. One of no_intent, analysis_in_progress, timeout,
-     * model_error, malformed_response, incomplete_response, capped, pass_error,
+     * model_error, malformed_response, incomplete_response, capped, deferred, pass_error,
      * pass_interrupted, no_assessor, summary_failed, below_ai_threshold, not_analysed,
-     * not_reached.
+     * not_reached. `deferred` means the verdict pass ran short of time and will be retried.
      */
     reason?: string;
 }

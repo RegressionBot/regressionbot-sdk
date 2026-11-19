@@ -498,6 +498,10 @@ const status = await job.waitForCompletion(3000, (s) => {
 
 Set `.autoApprove()` to automatically promote screenshots to baselines when the job completes. Useful for scheduled health checks or first-run baseline seeding.
 
+When the run carries an intent (`.withContext()`), auto-approve fires only if every changed
+page has an AI verdict — a page skipped under the project's AI summary threshold counts as
+having none. Otherwise the run is held for review instead of auto-approving.
+
 ```typescript
 const job = await rb
   .test('https://production-app.com')
