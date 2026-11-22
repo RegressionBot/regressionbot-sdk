@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { RegressionBot } from './index';
 import { sanitizeFilename } from './security';
-import { JobStatus, JobSummary, PageResult, RunContext, VerdictDecision, UsageBlock, ChangeCluster } from './types';
+import { JobStatus, JobSummary, PageResult, RunContext, VerdictDecision, UsageBlock, ChangeCluster, PathCoverage } from './types';
 import * as path from 'path';
 
 function formatSummary(items: PageResult['regressionbotSummary']): string {
@@ -39,6 +39,11 @@ function printChangeClusters(clusters: ChangeCluster[] | undefined) {
     });
 }
 
+function printPathCoverage(coverage: PathCoverage | undefined) {
+    if (!coverage) return;
+    console.log(`\n🗺️  Coverage: ${coverage.checkedPaths.length} path(s) via ${coverage.source}${coverage.partial ? ' (partial)' : ''}${coverage.reason ? ` — ${coverage.reason}` : ''}`);
+}
+
 /**
  * A mistake in how the command was invoked, rather than a run that worked and found
  * something. Exits 2 so CI can tell the two apart — a pipeline that treats "regressions
@@ -54,6 +59,9 @@ function printIntent(summary: JobSummary) {
     console.log(`   bugs: ${ia.bugCount}, intentional: ${ia.intentionalCount}, noise: ${ia.noiseCount}, needs review: ${ia.needsReviewCount}`);
     if (ia.reasons && ia.reasons.length > 0) {
         console.log(`   reasons: ${ia.reasons.join(', ')}`);
+    }
+    if (ia.missingExpectedChanges && ia.missingExpectedChanges.length > 0) {
+        console.log(`   missing expected changes: ${ia.missingExpectedChanges.join(', ')}`);
     }
 }
 
@@ -391,6 +399,7 @@ Waiting for completion...
     }
 
     printChangeClusters(summary.changeClusters);
+    printPathCoverage(summary.pathCoverage);
     printIntent(summary);
     printUsage(summary.usage);
 
@@ -447,6 +456,7 @@ Errors: ${summary.errorCount}
     }
 
     printChangeClusters(summary.changeClusters);
+    printPathCoverage(summary.pathCoverage);
     printIntent(summary);
     printUsage(summary.usage);
 
