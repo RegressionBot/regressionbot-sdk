@@ -674,6 +674,31 @@ export interface JobSummary {
      * from the API's own JSDoc instead. Needs API 2.10.0 or later.
      */
     changeClusters: ChangeCluster[];
+    /**
+     * Which paths the run checked, from where, and whether that was all it was asked to check.
+     * Not yet in the API's published openapi.yaml schema; this doc comment is taken from the
+     * API's own JSDoc instead.
+     */
+    pathCoverage?: PathCoverage;
+}
+
+/**
+ * Which pages a run covered and why. `partial` is the part a caller must not miss: the run did
+ * not look at the whole site, so a clean result is not "nothing else broke".
+ */
+export interface PathCoverage {
+    /** `paths`: the caller listed them. `sitemap`: read from the sitemap. `fallback`: nothing
+     * usable was given or found, so only "/". */
+    source: 'paths' | 'sitemap' | 'fallback';
+    checkedPaths: string[];
+    /** Sitemap paths the scans matched before the scan limit; absent when no sitemap was read. */
+    totalDiscovered?: number;
+    truncatedByLimit: boolean;
+    /** The run did not check the whole of what it was asked to (fallback, unreadable sitemap,
+     * scan limit). */
+    partial: boolean;
+    reason?: string;
+    sitemapUrl?: string;
 }
 
 export interface ChangeClusterPage {
@@ -736,9 +761,17 @@ export interface IntentAssessment {
     /**
      * Every condition behind `decision`, worst first; empty on a clean pass. Tells a review
      * caused by a page that needs a person from one caused by pages that failed or were never
-     * assessed. Needs API 2.10.0 or later.
+     * assessed. `partial_coverage` means the checked pages were clean but the run covered only
+     * part of the site (for example a sitemap that could not be read or hit the page cap), so a
+     * would-be pass became a review. Needs API 2.10.0 or later.
      */
     reasons?: GateReason[];
+    /**
+     * Present when `reasons` has `intended_change_not_found`: each `expectedChanges` item the
+     * run did not show, or the intent's own words when it listed none. The decision is
+     * `review`, never `pass`.
+     */
+    missingExpectedChanges?: string[];
     /** What the run compared and how much of it the verdict covers. Needs API 2.10.0 or later. */
     coverage?: RunCoverage;
 }
@@ -749,10 +782,17 @@ export type GateReason =
     | 'nothing_compared'
     | 'bug'
     | 'needs_review'
+    /** An intent expecting a visible change (`expectedChanges`, or text that is not an explicit
+     * "no visual change") did not show it — zero diffs and all-noise runs included. See
+     * {@link IntentAssessment.missingExpectedChanges}. */
+    | 'intended_change_not_found'
     | 'assessment_in_progress'
     | 'assessment_incomplete'
     | 'device_disagreement'
-    | 'comparison_failures';
+    | 'comparison_failures'
+    /** Not from the gate itself: added when a would-be pass is turned into a review because the
+     * run covered only part of the site. See {@link JobSummary.pathCoverage}. */
+    | 'partial_coverage';
 
 /**
  * Where one changed page stands with the verdict.

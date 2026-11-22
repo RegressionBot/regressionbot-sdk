@@ -38,6 +38,24 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### 2.11.0
+
+Needs an API release past 2.10.1 for these fields to be populated. On an older API they are
+simply absent.
+
+- **`intentAssessment.reasons`** can now include `'intended_change_not_found'`. An intent
+  that expects a visible change (`expectedChanges`, or text that is not an explicit "no
+  visual change") must now actually be seen: zero diffs and all-noise runs no longer pass
+  when the intent expected a change. `intentAssessment.missingExpectedChanges` lists each
+  `expectedChanges` item not found, or the intent's own words when it listed none.
+- **`intentAssessment.reasons`** can now include `'partial_coverage'`: the checked pages were
+  clean but the run covered only part of the site, so a would-be pass became a `review`.
+- **`JobSummary.pathCoverage`** (`PathCoverage`) — which paths the run checked, from where
+  (`'paths'` / `'sitemap'` / `'fallback'`), and whether that was partial. A run given no paths
+  now defaults to the project's sitemap (or `testOrigin/sitemap.xml`, up to 100 pages) instead
+  of silently checking only `/`; `pathCoverage.partial` and the `'partial_coverage'` reason
+  above say when it couldn't cover everything asked.
+
 ### 2.10.1
 
 Documentation only; no change to any type's shape or any method.
@@ -453,6 +471,8 @@ const summary = await job.getSummary();
 console.log(summary.intentAssessment?.summary);
 console.log(`Bugs: ${summary.intentAssessment?.bugCount}`);
 // What's behind a `review` or `fail`, worst first (needs API 2.10.0+): summary.intentAssessment?.reasons
+// If an expectedChanges item never showed up, reasons includes 'intended_change_not_found'
+// and summary.intentAssessment?.missingExpectedChanges names which ones.
 
 // Per-result verdict, plus the per-region verdicts behind it
 for (const r of summary.regressions) {

@@ -35,7 +35,8 @@ import {
     ResultAssessment,
     RunCoverage,
     ChangeCluster,
-    ChangeClusterPage
+    ChangeClusterPage,
+    PathCoverage
 } from './types';
 import {
     sanitizeFilename,
@@ -83,7 +84,8 @@ export type {
     ResultAssessment,
     RunCoverage,
     ChangeCluster,
-    ChangeClusterPage
+    ChangeClusterPage,
+    PathCoverage
 };
 
 export class RegressionBot {
