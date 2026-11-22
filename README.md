@@ -38,9 +38,9 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
-### Unreleased
+### 2.11.0
 
-Needs API dev/main past 2.10.1 for these fields to be populated. On an older API they are
+Needs an API release past 2.10.1 for these fields to be populated. On an older API they are
 simply absent.
 
 - **`intentAssessment.reasons`** can now include `'intended_change_not_found'`. An intent
