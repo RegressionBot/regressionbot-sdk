@@ -38,6 +38,27 @@ npm install @regressionbot/sdk
 
 ## Migration from 1.x
 
+### Unreleased
+
+Needs API dev/main past 2.11.0 for these fields to be populated. On an older API they are
+simply absent.
+
+- **A `Change`'s `region`** — the innermost landmark the element sits in (`footer`, `header`,
+  `nav`, `aside` or `main`). Absent when none.
+- **A `Change`'s `hasMoney` and `hasInteractive`**, on a `move`: whether the element's current
+  text carries money or a price, and whether its subtree holds a link, button or form control —
+  how a moved pricing row or list item is told from plain layout, since a move has no
+  before/after text of its own.
+- **`ChangeType` can now be `'schema-skip'`**: a JSON-LD block was too large or unparseable and
+  was not compared.
+- **`ResultVerdict.coversIntentId`** — the id of the standing intent that covers an intentional
+  change (for example `'standing'` or `'expected-changes'`). Always present on a verdict: null
+  when no standing intent covered the page.
+- **`intentAssessment.reasons`** can now include `'not_compared'` (most or all base routes
+  returned 404/410, so the worker skipped comparison) and `'schema_not_compared'` (a JSON-LD
+  block was too large or unparseable). `intentAssessment.schemaNotCompared` names each block
+  skipped for the latter.
+
 ### 2.11.0
 
 Needs an API release past 2.10.1 for these fields to be populated. On an older API they are

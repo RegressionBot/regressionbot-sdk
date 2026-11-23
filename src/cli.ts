@@ -17,6 +17,7 @@ function printRegression(r: PageResult) {
     if (r.diffUrl) console.log(`  Diff: ${r.diffUrl}`);
     if (r.verdict) {
         console.log(`  Verdict: ${r.verdict.decision} (confidence ${r.verdict.minConfidence.toFixed(2)}-${r.verdict.avgConfidence.toFixed(2)})`);
+        if (r.verdict.coversIntentId) console.log(`  Covers intent: ${r.verdict.coversIntentId}`);
     }
     if (r.assessment && r.assessment.status !== 'assessed') {
         console.log(`  Assessment: ${r.assessment.status}${r.assessment.reason ? ` (${r.assessment.reason})` : ''}`);
@@ -62,6 +63,9 @@ function printIntent(summary: JobSummary) {
     }
     if (ia.missingExpectedChanges && ia.missingExpectedChanges.length > 0) {
         console.log(`   missing expected changes: ${ia.missingExpectedChanges.join(', ')}`);
+    }
+    if (ia.schemaNotCompared && ia.schemaNotCompared.length > 0) {
+        console.log(`   schema not compared: ${ia.schemaNotCompared.join(', ')}`);
     }
 }
 
