@@ -242,6 +242,12 @@ export interface ResultVerdict {
      * `needs_review` before it is stored.
      */
     coveredBy?: string;
+    /**
+     * The id of the standing intent that covers this change (for example `standing` or
+     * `expected-changes`), on an intentional verdict that one covers. Always present on a
+     * verdict: null when no standing intent covered the page.
+     */
+    coversIntentId?: string | null;
     /** When the decision was made. */
     judgedAt?: string;
     /** @deprecated Equal to `minConfidence`. Kept for older clients. */
@@ -294,7 +300,9 @@ export type ChangeType =
     | 'meta-delete'
     | 'schema-edit'
     | 'schema-insert'
-    | 'schema-delete';
+    | 'schema-delete'
+    /** A JSON-LD block was too large or unparseable and was not compared. */
+    | 'schema-skip';
 
 /** One changed CSS property, as `[from, to]`. */
 export type StyleDelta = [from: string, to: string];
@@ -318,6 +326,8 @@ export interface Change {
      * For a metadata type, the field that changed instead.
      */
     element: string;
+    /** Innermost landmark the element sits in: footer, header, nav, aside or main. Absent when none. */
+    region?: string;
     /**
      * The text before the edit. Absent on an insert.
      *
@@ -336,6 +346,14 @@ export interface Change {
      * displaces a change.
      */
     label?: string;
+    /** On a move: true when the element's current text carries money or a price, however
+     *  long the text. A move has no before/after, so this is how a moved plan card or
+     *  pricing row is told from layout. */
+    hasMoney?: boolean;
+    /** On a move: true when the element's subtree holds a link, button or form control
+     *  (a, button, input, select, textarea), so a moved list item or wrapper around one
+     *  is told from layout. */
+    hasInteractive?: boolean;
     /** Changed computed styles, keyed by CSS property name. */
     style?: Record<string, StyleDelta>;
     /**
@@ -772,6 +790,12 @@ export interface IntentAssessment {
      * `review`, never `pass`.
      */
     missingExpectedChanges?: string[];
+    /**
+     * Present when `reasons` has `schema_not_compared`: each JSON-LD block that was too large
+     * or unparseable and was not compared, named like `ld+json[3] too_large`. The decision is
+     * `review`, never `pass`.
+     */
+    schemaNotCompared?: string[];
     /** What the run compared and how much of it the verdict covers. Needs API 2.10.0 or later. */
     coverage?: RunCoverage;
 }
@@ -780,6 +804,11 @@ export interface IntentAssessment {
 export type GateReason =
     | 'no_intent'
     | 'nothing_compared'
+    /** Most or all base routes returned 404/410, so the worker skipped comparison (SPA or a dead base). */
+    | 'not_compared'
+    /** A JSON-LD block was too large or unparseable, so schema was not compared. See
+     *  {@link IntentAssessment.schemaNotCompared}. */
+    | 'schema_not_compared'
     | 'bug'
     | 'needs_review'
     /** An intent expecting a visible change (`expectedChanges`, or text that is not an explicit
